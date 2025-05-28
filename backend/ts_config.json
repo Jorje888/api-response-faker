@@ -10,7 +10,8 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "baseUrl": "./",
-    "paths": {}
+    "paths": {},
+    "typeRoots": ["./node_modules/@types"]
   },
   "include": ["src/**/*", "test/**/*"],
   "exclude": ["node_modules"]
