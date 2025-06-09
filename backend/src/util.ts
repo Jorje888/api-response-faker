@@ -9,8 +9,7 @@ export function fakeARule(rule: FakeApiRule, app: Express.Express) {
   const responseHandler = (req: Request, res: Response) => {
     res.status(rule.statusCode);
     res.setHeader("Content-Type", rule.contentType);
-    // TODO: convert responseBody to rule.contentType
-    res.send(rule.responseBody);
+    res.send(formatMessage(rule.responseBody, rule.contentType));
   };
 
   const requestContentTypeMatcher = (
@@ -109,4 +108,19 @@ export function createRule(
   DB.addRule(db, rule);
   mapping.set({ path: rule.path, method: rule.method }, rule);
   fakeARule(rule, app);
+}
+
+function formatMessage(message: string, contentType: ContentType) {
+  switch (contentType) {
+    case "application/json":
+      return JSON.stringify({ message });
+    case "text/plain":
+      return message;
+    case "text/html":
+      return `<!DOCTYPE html><html><head><title>Message</title></head><body><p>${message}</p></body></html>`;
+    case "application/xml":
+      return `<?xml version="1.0" encoding="UTF-8"?><message>${message}</message>`;
+    default:
+      return message;
+  }
 }
