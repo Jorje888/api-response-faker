@@ -9,7 +9,6 @@ import { FakeApiRulePayload } from "./types/fakeApiRule";
  * @returns {FakeApiRule} The converted FakeApiRule object with the same
  * properties as the input payload.
  */
-
 function processPayload(payload: FakeApiRulePayload[]): FakeApiRule[] {
   return payload.map((item) => ({
     path: item.path,
@@ -33,11 +32,11 @@ export function initializeDB(): Database.Database {
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               path TEXT NOT NULL,
               method TEXT NOT NULL,
-              status_code INTEGER NOT NULL,
-              content_type TEXT NOT NULL,
-              response_body TEXT NOT NULL,
+              statusCode INTEGER NOT NULL,
+              contentType TEXT NOT NULL,
+              responseBody TEXT NOT NULL,
               UNIQUE(path, method)
-          )`
+          );`
   );
   return db;
 }
@@ -51,7 +50,7 @@ export function initializeDB(): Database.Database {
 export function getAllRules(db: Database.Database): FakeApiRule[] {
   try {
     return processPayload(
-      db.prepare("SELECT * FROM api_rules").all() as FakeApiRulePayload[]
+      db.prepare("SELECT * FROM fake_api_rules").all() as FakeApiRulePayload[]
     );
   } catch (error) {
     if (error instanceof Error) {
@@ -84,7 +83,7 @@ export function addRule(db: Database.Database, rule: FakeApiRule) {
   }
   try {
     db.prepare(
-      "INSERT INTO api_rules (path, method, status_code, content_type, response_body) VALUES (?, ?, ?, ?, ?)"
+      "INSERT INTO fake_api_rules (path, method, statusCode, contentType, responseBody) VALUES (?, ?, ?, ?, ?)"
     ).run(
       rule.path,
       rule.method,
