@@ -1,16 +1,42 @@
 export interface FakeApiRulePayload {
   id: number;
   path: string;
+  method: HttpMethod;
+  statusCode: number;
+  contentType: ContentType;
+  responseBody: string;
+}
+
+export default interface FakeApiRule {
+  path: string;
   method: string;
   statusCode: number;
   contentType: string;
   responseBody: string;
 }
 
-export default interface FakeApiRuleRequest {
-  path: string;
-  method: string;
-  statusCode: number;
-  contentType: string;
-  responseBody: string;
+export type RuleMap = Map<{ path: string; method: string }, FakeApiRule>;
+
+export enum HttpMethod {
+  GET = "GET",
+  POST = "POST",
+  PUT = "PUT",
+  DELETE = "DELETE",
+  PATCH = "PATCH",
+  HEAD = "HEAD",
+  OPTIONS = "OPTIONS",
+  ALL = "ALL",
+}
+
+export enum ContentType {
+  JSON = "application/json",
+  TEXT = "text/plain",
+  HTML = "text/html",
+  XML = "application/xml",
+  FORM_DATA = "multipart/form-data",
+  URL_ENCODED = "application/x-www-form-urlencoded",
+  YAML = "application/x-yaml",
+  CSV = "text/csv",
+  PDF = "application/pdf",
+  ZIP = "application/zip",
 }
