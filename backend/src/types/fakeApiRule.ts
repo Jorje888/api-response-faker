@@ -33,8 +33,4 @@ export enum ContentType {
   TEXT = "text/plain",
   HTML = "text/html",
   XML = "application/xml",
-  FORM_DATA = "multipart/form-data",
-  URL_ENCODED = "application/x-www-form-urlencoded",
-  YAML = "application/x-yaml",
-  CSV = "text/csv",
 }
