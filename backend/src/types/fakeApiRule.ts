@@ -9,9 +9,9 @@ export interface FakeApiRulePayload {
 
 export default interface FakeApiRule {
   path: string;
-  method: string;
+  method: HttpMethod;
   statusCode: number;
-  contentType: string;
+  contentType: ContentType;
   responseBody: string;
 }
 
@@ -37,6 +37,4 @@ export enum ContentType {
   URL_ENCODED = "application/x-www-form-urlencoded",
   YAML = "application/x-yaml",
   CSV = "text/csv",
-  PDF = "application/pdf",
-  ZIP = "application/zip",
 }
