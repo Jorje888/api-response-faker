@@ -7,7 +7,7 @@ export interface FakeApiRulePayload {
   responseBody: string;
 }
 
-export default interface FakeApiRule {
+export default interface FakeApiRuleRequest {
   path: string;
   method: string;
   statusCode: number;
