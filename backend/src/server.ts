@@ -21,6 +21,11 @@ rules.forEach((rule) => {
   fakeARule(rule, app);
 });
 
+/**
+ * When implementing a handler for a request from frontend that adds a new rule
+ * use the addRule utility function instead of adding it manually
+ */
+
 // Listen to the spevified port
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
