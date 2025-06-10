@@ -1,6 +1,6 @@
 import React from "react";
 
-interface Rule {
+export interface Rule {
     id: number;
     name: string;
     path: string;
@@ -10,16 +10,20 @@ interface Rule {
     responseBody: string;
 }
 
-interface RuleList{
+interface RuleListarr{
     rules: Rule[];
 }
 
-function RuleList({ rules }: RuleList) {
+function RuleList({ rules }: RuleListarr) {
     return (
         <div>
             <h2>Rule List</h2>
-            <ul>
-                {rules.map((rule) => (
+
+            {rules.length===0 ? (
+                <p>No rules added yet.</p>
+            ):(
+                <ul>
+              {rules.map((rule) => (
                     <li key={rule.id}>
                         <h3>{rule.name}</h3>
                         <p>Path: {rule.path}</p>
@@ -27,10 +31,10 @@ function RuleList({ rules }: RuleList) {
                         <p>Status Code: {rule.statusCode}</p>
                         <p>Content Type: {rule.contentType}</p>
                         <p>Response Body: {rule.responseBody}</p>
-                    </li>
-                ))}
+                    </li>  
+            ))}
             </ul>
-            {rules.length === 0 && <p>No rules added yet.</p>}
+            )}
         </div>
     );
 }
