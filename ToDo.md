@@ -98,8 +98,8 @@ To allow for parallel work, we'll divide the project into three main areas, focu
 - **Milestone 3.1: React Project Setup & Basic Layout**
 
   - [x] Initialize a React project with TypeScript (e.g., Vite/CRA).
-  - [ ] Set up basic component structure (e.g., `App.tsx`, `RuleForm.tsx`, `RuleList.tsx`).
-  - [ ] Implement basic styling (e.g., using CSS modules or a styling library).
+  - [x] Set up basic component structure (e.g., `App.tsx`, `RuleForm.tsx`, `RuleList.tsx`).
+  - [x] Implement basic styling (e.g., using CSS modules or a styling library).
 
 - **Milestone 3.2: Rule Definition Form**
 

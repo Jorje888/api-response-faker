@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import type { Rule } from './RuleList';
+import './RuleForm.css';
+
 
 interface RuleFormProps {
     onAddRule: (newRule: Rule) => void;

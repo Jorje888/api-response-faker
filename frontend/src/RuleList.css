@@ -1,0 +1,65 @@
+.rule-list-container h2 {
+    margin-top: 0;
+    color: #333;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+/* Style the message when there are no rules */
+.rule-list-container p {
+    font-style: italic;
+    color: #666;
+    text-align: center;
+}
+
+/* Style the unordered list */
+.rule-list {
+    list-style: none; /* Remove default bullet points */
+    padding: 0; /* Remove default padding */
+    margin: 0; /* Remove default margin */
+}
+
+/* Style individual list items (rules) */
+.rule-list-item {
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 15px; /* Space between rules */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); /* Subtle shadow */
+}
+
+/* Style the rule name heading */
+.rule-list-item h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #007bff; /* Highlight the rule name */
+    border-bottom: 1px dashed #eee;
+    padding-bottom: 8px;
+}
+
+/* Style the paragraphs within list items */
+.rule-list-item p {
+    margin: 5px 0;
+    line-height: 1.5;
+    color: #555;
+}
+
+/* Style the strong tags (labels like Path, Method) */
+.rule-list-item p strong {
+    color: #333;
+    margin-right: 5px; /* Space after the label */
+}
+
+/* Style the response body span to prevent overflow */
+.rule-list-item .response-body {
+    word-break: break-all; /* Break long words if necessary */
+    white-space: pre-wrap; /* Preserve whitespace and wrap text */
+    font-family: monospace; /* Use a monospace font for code/JSON */
+    background-color: #f1f1f1; /* Light background for body */
+    padding: 5px;
+    border-radius: 4px;
+    display: block; /* Make the span a block element to take full width */
+    margin-top: 5px;
+}

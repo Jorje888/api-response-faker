@@ -1,4 +1,5 @@
 import React from "react";
+import "./RuleList.css";
 
 export interface Rule {
     id: number;
