@@ -2,7 +2,11 @@ import assert from "assert";
 import Database from "better-sqlite3";
 import "mocha";
 import FakeApiRule from "../src/types/fakeApiRule";
-import { FakeApiRulePayload } from "../src/types/fakeApiRule";
+import {
+  FakeApiRulePayload,
+  HttpMethod,
+  ContentType,
+} from "../src/types/fakeApiRule";
 import { initializeDB, getAllRules, addRule } from "../src/db";
 
 /**
@@ -89,16 +93,16 @@ describe("getAllRules", () => {
     const db = initializeDB();
     const rule1: FakeApiRule = {
       path: "/api/rule1",
-      method: "GET",
+      method: HttpMethod.GET,
       statusCode: 200,
-      contentType: "application/json",
+      contentType: ContentType.JSON,
       responseBody: "body",
     };
     const rule2: FakeApiRule = {
       path: "/api/rule2",
-      method: "GET",
+      method: HttpMethod.GET,
       statusCode: 200,
-      contentType: "application/json",
+      contentType: ContentType.JSON,
       responseBody: "body",
     };
     db.prepare(
@@ -183,9 +187,9 @@ describe("addRule", () => {
     const db = initializeDB();
     const rule: FakeApiRule = {
       path: "/api/rule1",
-      method: "GET",
+      method: HttpMethod.GET,
       statusCode: 200,
-      contentType: "application/json",
+      contentType: ContentType.JSON,
       responseBody: "body",
     };
     addRule(db, rule);
