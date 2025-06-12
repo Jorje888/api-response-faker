@@ -17,6 +17,7 @@ rules.forEach((rule) => {
   fake_api_rules.set({ path: rule.path, method: rule.method }, rule);
 });
 
+// Listend to the spevified port
 rules.forEach((rule) => {
   fakeARule(rule, app);
 });
