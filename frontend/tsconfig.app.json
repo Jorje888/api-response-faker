@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+
+    "jsx": "react-jsx",
+    "moduleResolution": "Node", 
+    "lib": ["DOM", "DOM.Iterable", "ESNext"], 
+    "isolatedModules": true, 
+    "noEmit": true, 
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.d.ts",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/setupTests.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
