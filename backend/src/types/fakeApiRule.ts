@@ -1,5 +1,6 @@
 export interface FakeApiRulePayload {
   id: number;
+  username: string;
   path: string;
   method: HttpMethod;
   statusCode: number;
@@ -7,7 +8,8 @@ export interface FakeApiRulePayload {
   responseBody: string;
 }
 
-export default interface FakeApiRule {
+export interface FakeApiRule {
+  user: string;
   path: string;
   method: HttpMethod;
   statusCode: number;
@@ -15,7 +17,10 @@ export default interface FakeApiRule {
   responseBody: string;
 }
 
-export type RuleMap = Map<{ path: string; method: string }, FakeApiRule>;
+export type RuleMap = Map<
+  { user: string; path: string; method: string },
+  FakeApiRule
+>;
 
 export enum HttpMethod {
   GET = "GET",

@@ -1,4 +1,4 @@
-import FakeApiRule from "./types/fakeApiRule";
+import { FakeApiRule } from "./types/fakeApiRule";
 import { Request, Response } from "express";
 import Express from "express";
 import Database from "better-sqlite3";
@@ -112,6 +112,7 @@ export function createRule(
   app: Express.Express
 ) {
   if (
+    !rule.user ||
     !rule.path ||
     !rule.method ||
     !rule.statusCode ||
@@ -142,7 +143,7 @@ export function createRule(
   }
 
   DB.addRule(db, rule);
-  mapping.set({ path: rule.path, method: rule.method }, rule);
+  mapping.set({ user: rule.user, path: rule.path, method: rule.method }, rule);
   fakeARule(rule, app);
 }
 
