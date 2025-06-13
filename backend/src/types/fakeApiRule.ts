@@ -1,5 +1,6 @@
 export interface FakeApiRulePayload {
   id: number;
+  username: string;
   path: string;
   method: HttpMethod;
   statusCode: number;
@@ -7,7 +8,7 @@ export interface FakeApiRulePayload {
   responseBody: string;
 }
 
-export default interface FakeApiRule {
+export interface FakeApiRule {
   path: string;
   method: HttpMethod;
   statusCode: number;
