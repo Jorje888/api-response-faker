@@ -1,0 +1,46 @@
+/* src/App.css */
+
+body {
+  font-family: sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #eef2f7; /* Light background */
+  color: #333;
+}
+
+.App {
+  max-width: 960px; /* Max width for content */
+  margin: 20px auto; /* Center the app container horizontally */
+  padding: 20px;
+  background-color: #fff; /* White background for the main content area */
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+}
+
+.App h1 {
+  text-align: center;
+  color: #0056b3; /* A shade of blue */
+  margin-bottom: 30px;
+  border-bottom: 3px solid #007bff;
+  padding-bottom: 15px;
+}
+
+/* Add some basic spacing between the form and the list */
+.rule-form-container + div { /* Selects the div immediately after the form container */
+    margin-top: 30px;
+}
+
+/* Basic link style reset if needed elsewhere */
+a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Global input/select/textarea border style reset (optional, RuleForm has its own) */
+input, select, textarea, button {
+    font-family: inherit; /* Use the body's font */
+}
