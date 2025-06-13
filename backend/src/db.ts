@@ -11,6 +11,7 @@ import { FakeApiRulePayload } from "./types/fakeApiRule"; // Assuming FakeApiRul
  */
 function processPayload(payload: FakeApiRulePayload[]): FakeApiRule[] {
   return payload.map((item) => ({
+    user: item.username,
     path: item.path,
     method: item.method,
     statusCode: item.statusCode,
@@ -56,15 +57,35 @@ export function initializeDB(): Database.Database {
  * @param {string} username - The username for whom to retrieve rules.
  * @returns {FakeApiRule[]} An array of fake API rules for the specified user.
  */
-export function getAllRules(
+export function getAllRulesByUsername(
   db: Database.Database,
   username: string
 ): FakeApiRule[] {
   try {
     const statement = db.prepare(
-      "SELECT path, method, statusCode, contentType, responseBody FROM fake_api_rules WHERE username = ?"
+      "SELECT username, path, method, statusCode, contentType, responseBody FROM fake_api_rules WHERE username = ?"
     );
     return processPayload(statement.all(username) as FakeApiRulePayload[]);
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(`Database error: ${error.message}`);
+    }
+    throw new Error("An unknown error occurred while accessing the database");
+  }
+}
+
+/**
+ * Retrieves all fake API rules from the database.
+ *
+ * @param {Database} db - The database to query.
+ * @returns {FakeApiRule[]} An array of fake API rules.
+ */
+export function getAllRules(db: Database.Database): FakeApiRule[] {
+  try {
+    const statement = db.prepare(
+      "SELECT username, path, method, statusCode, contentType, responseBody FROM fake_api_rules"
+    );
+    return processPayload(statement.all() as FakeApiRulePayload[]);
   } catch (error) {
     if (error instanceof Error) {
       throw new Error(`Database error: ${error.message}`);
@@ -79,21 +100,16 @@ export function getAllRules(
  * @param {Database.Database} db - The database connection to use for the operation.
  * @param {FakeApiRule} rule - The rule to be added to the database, containing
  * the path, method, status code, content type, and response body.
- * @param {string} username - The username associated with this rule.
  * @throws Will throw an error if there is a database-related issue during insertion
  * or if rule/username data is invalid.
  */
-export function addRule(
-  db: Database.Database,
-  rule: FakeApiRule,
-  username: string
-) {
+export function addRule(db: Database.Database, rule: FakeApiRule) {
   if (!db) {
     throw new Error("Database is not initialized");
   }
   if (
-    !username ||
-    username.trim() === "" ||
+    !rule.user ||
+    rule.user.trim() === "" ||
     !rule.path ||
     !rule.method ||
     !rule.statusCode ||
@@ -106,7 +122,7 @@ export function addRule(
     db.prepare(
       "INSERT INTO fake_api_rules (username, path, method, statusCode, contentType, responseBody) VALUES (?, ?, ?, ?, ?, ?)"
     ).run(
-      username,
+      rule.user,
       rule.path,
       rule.method,
       rule.statusCode,
@@ -131,4 +147,25 @@ export function addUser(
     username,
     hashPass
   );
+}
+
+export function hasUser(db: Database.Database, username: string): boolean {
+  //TODO write  robust error handling, add tests
+  const user = db
+    .prepare(`SELECT * FROM users WHERE username = ?`)
+    .get(username);
+  return !!user;
+}
+
+export function removeUser(db: Database.Database, username: string) {
+  //TODO write  robust error handling, add tests
+  db.prepare(`DELETE FROM users WHERE username = ?`).run(username);
+}
+
+export function getHashPass(db: Database.Database, username: string): string {
+  //TODO write  robust error handling, add tests
+  const hashPass = db
+    .prepare(`SELECT hashPass FROM users WHERE username = ?`)
+    .get(username) as string;
+  return hashPass;
 }

@@ -2,7 +2,7 @@ import assert from "assert";
 import Database from "better-sqlite3";
 import "mocha";
 import { FakeApiRule, HttpMethod, ContentType } from "../src/types/fakeApiRule";
-import { initializeDB, getAllRules, addRule } from "../src/db";
+import { initializeDB, getAllRulesByUsername, addRule } from "../src/db";
 
 /**
  * Testing strategy for db.initializeDB():
@@ -195,7 +195,7 @@ describe("initializeDB", () => {
  * 4. Should not return rules belonging to other users.
  *
  */
-describe("getAllRules", () => {
+describe("getAllRulesByUsername", () => {
   let db: Database.Database;
 
   beforeEach(() => {
@@ -224,24 +224,23 @@ describe("getAllRules", () => {
     // Manually drop the table to simulate an uninitialized state for this specific test
     uninitializedDb.exec("DROP TABLE IF EXISTS fake_api_rules;");
     assert.throws(() => {
-      getAllRules(uninitializedDb, "anyUser"); // Pass a dummy username
+      getAllRulesByUsername(uninitializedDb, "anyUser");
     }, /no such table: fake_api_rules/);
     uninitializedDb.close();
   });
 
   it("Should return an empty array if no rules exist for a specific user", () => {
-    // Add a rule for a different user
     db.prepare(
       "INSERT INTO fake_api_rules (username, path, method, statusCode, contentType, responseBody) VALUES (?, ?, ?, ?, ?, ?)"
     ).run("anotherUser", "/api/ruleX", "GET", 200, "application/json", "body");
 
-    // Expecting no rules for 'user1' as none have been added for them
-    assert.deepStrictEqual(getAllRules(db, "user1"), []);
+    assert.deepStrictEqual(getAllRulesByUsername(db, "user1"), []);
   });
 
   it("Should return an array of all rules for a specific user", () => {
     const user1Rules: FakeApiRule[] = [
       {
+        user: "user1",
         path: "/api/rule1",
         method: HttpMethod.GET,
         statusCode: 200,
@@ -249,6 +248,7 @@ describe("getAllRules", () => {
         responseBody: "body1",
       },
       {
+        user: "user1",
         path: "/api/rule2",
         method: HttpMethod.POST,
         statusCode: 201,
@@ -258,6 +258,7 @@ describe("getAllRules", () => {
     ];
 
     const user2Rule: FakeApiRule = {
+      user: "user2",
       path: "/api/rule3",
       method: HttpMethod.PUT,
       statusCode: 200,
@@ -270,7 +271,7 @@ describe("getAllRules", () => {
       db.prepare(
         "INSERT INTO fake_api_rules (username, path, method, statusCode, contentType, responseBody) VALUES (?, ?, ?, ?, ?, ?)"
       ).run(
-        "user1",
+        rule.user,
         rule.path,
         rule.method,
         rule.statusCode,
@@ -283,7 +284,7 @@ describe("getAllRules", () => {
     db.prepare(
       "INSERT INTO fake_api_rules (username, path, method, statusCode, contentType, responseBody) VALUES (?, ?, ?, ?, ?, ?)"
     ).run(
-      "user2",
+      user2Rule.user,
       user2Rule.path,
       user2Rule.method,
       user2Rule.statusCode,
@@ -291,8 +292,7 @@ describe("getAllRules", () => {
       user2Rule.responseBody
     );
 
-    const retrievedRules = getAllRules(db, "user1"); // Fetch rules specifically for user1
-    // Sort rules for consistent comparison, as order from DB might not be guaranteed
+    const retrievedRules = getAllRulesByUsername(db, "user1");
     retrievedRules.sort((a, b) => a.path.localeCompare(b.path));
     user1Rules.sort((a, b) => a.path.localeCompare(b.path));
     assert.deepStrictEqual(retrievedRules, user1Rules);
@@ -300,6 +300,7 @@ describe("getAllRules", () => {
 
   it("Should not return rules belonging to other users", () => {
     const user1Rule: FakeApiRule = {
+      user: "user1",
       path: "/api/user1rule",
       method: HttpMethod.GET,
       statusCode: 200,
@@ -307,6 +308,7 @@ describe("getAllRules", () => {
       responseBody: "user1body",
     };
     const user2Rule: FakeApiRule = {
+      user: "user2",
       path: "/api/user2rule",
       method: HttpMethod.GET,
       statusCode: 200,
@@ -317,7 +319,7 @@ describe("getAllRules", () => {
     db.prepare(
       "INSERT INTO fake_api_rules (username, path, method, statusCode, contentType, responseBody) VALUES (?, ?, ?, ?, ?, ?)"
     ).run(
-      "user1",
+      user1Rule.user,
       user1Rule.path,
       user1Rule.method,
       user1Rule.statusCode,
@@ -327,7 +329,7 @@ describe("getAllRules", () => {
     db.prepare(
       "INSERT INTO fake_api_rules (username, path, method, statusCode, contentType, responseBody) VALUES (?, ?, ?, ?, ?, ?)"
     ).run(
-      "user2",
+      user2Rule.user,
       user2Rule.path,
       user2Rule.method,
       user2Rule.statusCode,
@@ -336,9 +338,9 @@ describe("getAllRules", () => {
     );
 
     // Test for user1's rules
-    assert.deepStrictEqual(getAllRules(db, "user1"), [user1Rule]);
+    assert.deepStrictEqual(getAllRulesByUsername(db, "user1"), [user1Rule]);
     // Test for user2's rules
-    assert.deepStrictEqual(getAllRules(db, "user2"), [user2Rule]);
+    assert.deepStrictEqual(getAllRulesByUsername(db, "user2"), [user2Rule]);
   });
 });
 
@@ -372,6 +374,7 @@ describe("addRule", () => {
     // Manually drop the table to simulate an uninitialized state for this specific test
     uninitializedDb.exec("DROP TABLE IF EXISTS fake_api_rules;");
     const rule: FakeApiRule = {
+      user: "testuser",
       path: "/api/test",
       method: HttpMethod.GET,
       statusCode: 200,
@@ -379,23 +382,25 @@ describe("addRule", () => {
       responseBody: "body",
     };
     assert.throws(() => {
-      addRule(uninitializedDb, rule, "testuser");
+      addRule(uninitializedDb, rule);
     }, /no such table: fake_api_rules/);
     uninitializedDb.close();
   });
 
   it("Should throw an error if any required rule field is missing or null", () => {
     const baseRule: FakeApiRule = {
+      user: "testuser",
       path: "/api/test",
       method: HttpMethod.GET,
       statusCode: 200,
       contentType: ContentType.JSON,
       responseBody: "body",
     };
-    const username = "testuser";
 
     // Test cases for missing/null fields
     const invalidRules = [
+      { ...baseRule, user: undefined },
+      { ...baseRule, user: null },
       { ...baseRule, path: undefined },
       { ...baseRule, path: null },
       { ...baseRule, method: undefined },
@@ -411,7 +416,7 @@ describe("addRule", () => {
     for (const invalidRule of invalidRules) {
       assert.throws(
         () => {
-          addRule(db, invalidRule as unknown as FakeApiRule, username);
+          addRule(db, invalidRule as unknown as FakeApiRule);
         },
         Error,
         `Should throw for missing/null field: ${JSON.stringify(invalidRule)}`
@@ -421,6 +426,7 @@ describe("addRule", () => {
 
   it("Should throw an error if the username is null or an empty string", () => {
     const rule: FakeApiRule = {
+      user: "",
       path: "/api/test",
       method: HttpMethod.GET,
       statusCode: 200,
@@ -430,7 +436,7 @@ describe("addRule", () => {
 
     assert.throws(
       () => {
-        addRule(db, rule, null as unknown as string);
+        addRule(db, rule);
       },
       Error,
       "Should throw for null username"
@@ -438,7 +444,7 @@ describe("addRule", () => {
 
     assert.throws(
       () => {
-        addRule(db, rule, "");
+        addRule(db, rule);
       },
       Error,
       "Should throw for empty username"
@@ -447,6 +453,7 @@ describe("addRule", () => {
 
   it("Should successfully add a valid rule to the database", () => {
     const rule: FakeApiRule = {
+      user: "testuser",
       path: "/api/rule1",
       method: HttpMethod.GET,
       statusCode: 200,
@@ -455,16 +462,17 @@ describe("addRule", () => {
     };
     const username = "testuser";
 
-    addRule(db, rule, username);
+    addRule(db, rule);
 
     // Verify the rule was added by retrieving it using getAllRules with the username
-    const rulesInDb = getAllRules(db, username);
+    const rulesInDb = getAllRulesByUsername(db, username);
 
     assert.deepStrictEqual(rulesInDb, [rule]);
   });
 
   it("Should not add a rule if a rule with the same (username, path, method) already exists", () => {
     const rule: FakeApiRule = {
+      user: "testuser",
       path: "/api/duplicate",
       method: HttpMethod.GET,
       statusCode: 200,
@@ -473,15 +481,13 @@ describe("addRule", () => {
     };
     const username = "testuser";
 
-    addRule(db, rule, username); // First addition
-
-    // Attempt to add the same rule again
+    addRule(db, rule);
     assert.throws(() => {
-      addRule(db, rule, username);
+      addRule(db, rule);
     }, /UNIQUE constraint failed: fake_api_rules.username, fake_api_rules.path, fake_api_rules.method/);
 
     // Verify that only one rule exists using getAllRules
-    const rulesInDb = getAllRules(db, username);
+    const rulesInDb = getAllRulesByUsername(db, username);
     assert.strictEqual(rulesInDb.length, 1);
     assert.deepStrictEqual(rulesInDb[0], rule);
   });

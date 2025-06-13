@@ -9,6 +9,7 @@ export interface FakeApiRulePayload {
 }
 
 export interface FakeApiRule {
+  user: string;
   path: string;
   method: HttpMethod;
   statusCode: number;
@@ -16,7 +17,10 @@ export interface FakeApiRule {
   responseBody: string;
 }
 
-export type RuleMap = Map<{ path: string; method: string }, FakeApiRule>;
+export type RuleMap = Map<
+  { user: string; path: string; method: string },
+  FakeApiRule
+>;
 
 export enum HttpMethod {
   GET = "GET",
