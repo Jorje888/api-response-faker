@@ -1,6 +1,6 @@
 import express from 'express';
 import * as DB from '../db';
-import FakeApiRule from '../types/fakeApiRule';
+import {FakeApiRule} from '../types/fakeApiRule';
 import { fakeARule } from '../util';
 
 const router = express.Router();
@@ -26,6 +26,7 @@ export function initializeRouter(database: any, app: any) {
 
     try {
       const rule: FakeApiRule = {
+        user: req.body.user || 'defaultUser',
         path,
         method,
         statusCode: parseInt(statusCode),
@@ -120,6 +121,7 @@ export function initializeRouter(database: any, app: any) {
       
       // Re-register the fake endpoint with new data
       const rule: FakeApiRule = {
+        user: updatedRule.user,
         path: updatedRule.path,
         method: updatedRule.method,
         statusCode: updatedRule.statusCode,
