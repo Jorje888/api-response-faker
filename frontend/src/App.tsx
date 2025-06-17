@@ -24,8 +24,9 @@ const [rules, setRules] = useState<Rule[]>([]);
       console.log(`Disconnected from server: ${reason}`);
     });
 
-    socket.on('ruleAddedSuccess', (data: any) => {
-      setRules(prevRules => [...prevRules, data]);
+     socket.on('ruleAddedSuccess', (data: { status: string, receivedRule: Rule }) => {
+      console.log('Server confirmed rule was added:', data.receivedRule);
+      setRules(prevRules => [...prevRules, data.receivedRule]);
     });
 
     socket.on('ruleAddError', (error: any) => {
@@ -42,7 +43,6 @@ const [rules, setRules] = useState<Rule[]>([]);
   }, []);
 
   const handleAddRule = (newRule: Rule) => {
-    setRules(prevRules => [...prevRules, newRule]);
     socket.emit('addRule', newRule);
   };
 
