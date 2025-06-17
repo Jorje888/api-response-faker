@@ -4,7 +4,7 @@ const target = "http://localhost:3000";
 
 /**
  * Testing strategy for the registration functionality.
- * Note: testing automatically launches the backend server defined in server.ts
+ * Note: testing requires a backend server to be running already
  *
  * Valid registration should return 201 status code
  * Duplicate username and password should return 409 status code

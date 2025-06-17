@@ -7,7 +7,8 @@
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "test-db": "mocha -r ts-node/register  test/databaseTests.ts",
-    "test-register": "mocha -r ts-node/register test/RegistrationTests.ts"
+    "test-register": "mocha -r ts-node/register test/RegistrationTests.ts",
+    "test-login": "mocha -r ts-node/register test/LoginTests.ts"
   },
   "keywords": [],
   "author": "",
