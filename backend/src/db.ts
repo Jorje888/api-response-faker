@@ -1,6 +1,10 @@
 import Database from "better-sqlite3";
 import { FakeApiRule } from "./types/fakeApiRule";
-import { FakeApiRulePayload } from "./types/fakeApiRule"; // Assuming FakeApiRulePayload is similar to FakeApiRule but might come from external input
+import {
+  FakeApiRulePayload,
+  HttpMethod,
+  ContentType,
+} from "./types/fakeApiRule";
 
 /**
  * Converts a FakeApiRulePayload object to a FakeApiRule object.
@@ -164,8 +168,44 @@ export function removeUser(db: Database.Database, username: string) {
 
 export function getHashPass(db: Database.Database, username: string): string {
   //TODO write  robust error handling, add tests
-  const hashPass = db
+  const user = db
     .prepare(`SELECT hashPass FROM users WHERE username = ?`)
-    .get(username) as string;
-  return hashPass;
+    .get(username) as { hashPass?: string } | undefined;
+  if (!user?.hashPass) {
+    throw new Error(`User not found: ${username}`);
+  }
+  return user.hashPass;
+}
+
+export function seedDatabase(db: Database.Database) {
+  const rules: FakeApiRule[] = [
+    {
+      user: "test",
+      path: "/test/admin",
+      method: HttpMethod.GET,
+      statusCode: 200,
+      contentType: ContentType.JSON,
+      responseBody: "Hello, Administrator!",
+    },
+    {
+      user: "test",
+      path: "/test/user",
+      method: HttpMethod.GET,
+      statusCode: 200,
+      contentType: ContentType.TEXT,
+      responseBody: "Hello, User!",
+    },
+    {
+      user: "test",
+      path: "/test/admin2",
+      method: HttpMethod.POST,
+      statusCode: 201,
+      contentType: ContentType.JSON,
+      responseBody: "Created, Administrator!",
+    },
+  ];
+  addUser(db, "test", "test1234");
+  for (const rule of rules) {
+    addRule(db, rule);
+  }
 }

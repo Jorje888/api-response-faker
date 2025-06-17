@@ -161,7 +161,7 @@ export function createRule(
  * - "application/xml": Wraps the message in an XML structure.
  * Returns the message as-is for unsupported content types.
  */
-function formatMessage(message: string, contentType: ContentType) {
+function formatMessage(message: string, contentType: ContentType): string {
   switch (contentType) {
     case "application/json":
       return JSON.stringify({ message });
