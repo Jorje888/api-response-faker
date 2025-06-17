@@ -132,14 +132,17 @@ app.post("/register", async (req, res) => {
 // User Login Route
 app.post("/login", async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password } = req.body as {
+      username: string;
+      password: string;
+    };
 
     if (!username || !password) {
       return res
         .status(400)
         .json({ error: "Username and password are required." });
     }
-    const formattedUsername = username.trim().toLowerCase();
+    const formattedUsername = username.trim().toLowerCase() as string;
     // If user not found
     if (!DB.hasUser(db, formattedUsername)) {
       return res.status(400).json({ error: "Invalid credentials." });

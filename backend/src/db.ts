@@ -168,10 +168,13 @@ export function removeUser(db: Database.Database, username: string) {
 
 export function getHashPass(db: Database.Database, username: string): string {
   //TODO write  robust error handling, add tests
-  const hashPass = db
+  const user = db
     .prepare(`SELECT hashPass FROM users WHERE username = ?`)
-    .get(username) as string;
-  return hashPass;
+    .get(username) as { hashPass?: string } | undefined;
+  if (!user?.hashPass) {
+    throw new Error(`User not found: ${username}`);
+  }
+  return user.hashPass;
 }
 
 export function seedDatabase(db: Database.Database) {
