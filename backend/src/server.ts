@@ -15,6 +15,7 @@ const fake_api_rules: Map<
 > = new Map();
 
 export const db = DB.initializeDB();
+DB.seedDatabase(db);
 const rules = DB.getAllRules(db);
 
 dotenv.config();
