@@ -6,7 +6,10 @@ import type {Rule} from './RuleList';
 import { useState } from 'react';
 import socket from './socket';
 import { useEffect } from 'react';
-
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import LoginPage from './LoginPage';
+import RegisterPage from './RegisterPage';
+import { Link } from 'react-router-dom';
 
 // ამ კოდს შევცვლი იმის მიხედვით როგორ მომიწევს გატესტვა , საიდან რისი ჩამოტვირთვა მომიწევს ,
 // სოკეტიდან როგორ , რა ბრძანებთ მიიღებენ ინფორმაციას
@@ -48,9 +51,30 @@ const [rules, setRules] = useState<Rule[]>([]);
 
   return (
     <div className='App'>
-      <h1>API response faker</h1>
-      <RuleForm onAddRule={handleAddRule} />
-      <RuleList rules={rules} />
+  <BrowserRouter>
+      <nav style={{ padding: '1rem', background: '#f0f0f0', borderBottom: '1px solid #ccc' }}>
+        {/*აქ ავაგეთ თითონ ლინკები*/}
+        <Link to="/" style={{ marginRight: '1rem' }}>Home</Link>
+        <Link to="/login" style={{ marginRight: '1rem' }}>Login</Link>
+        <Link to="/register">Register</Link>
+      </nav>
+      <main style={{ padding: '1rem' }}>
+        <Routes>
+          {/*აქ ვსვამთ სარეგიტრაციო და სალოგინო ლინკებს , და ანუ აქ იმ აგებულ ლინკებს რომ დავაწვებით სად გადაგვიყვანს ეგაა მოცემული*/}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          {/*ეს ელემენტი იგივე სახლში მიდის , და ელემენტის აღწერაში იგივე გავუწერე , რაც უკვე იყო გაწერილი App.tsx ში , 
+          უბრალოდ მაინც რომ შემენარჩუნებინა ფუნქციონალი ასე ჯობდა რომ გამეკეთებინა*/}
+          <Route path="/" element={
+            <>
+              <h1>API response faker</h1>
+              <RuleForm onAddRule={handleAddRule} />
+              <RuleList rules={rules} />
+            </>
+          } />
+        </Routes>
+      </main>
+    </BrowserRouter>
     </div>
   );
 }
