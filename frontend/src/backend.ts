@@ -35,6 +35,21 @@ io.on('connection', (socket) => {
   });
 
 
+
+
+socket.on('loginAttempt', (loginData) => {
+    console.log(`[BACKEND] Received 'loginAttempt' from client ${socket.id}:`);
+    console.log(loginData);
+  });
+
+
+    socket.on('registerAttempt', (registrationData) => {
+    console.log(`[BACKEND] Received 'registerAttempt' from client ${socket.id}:`);
+    console.log(registrationData); 
+  });
+
+
+
   socket.on('disconnect', (reason) => {
     console.log(`[BACKEND] Client disconnected: ${socket.id} due to ${reason}`);
   });
