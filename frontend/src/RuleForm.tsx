@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import type { Rule } from './RuleList';
+import { HttpMethod } from './RuleList';
+import { ContentType } from './RuleList';
 import './RuleForm.css';
+
 
 
 interface RuleFormProps {
@@ -10,10 +13,10 @@ interface RuleFormProps {
 function RuleForm({ onAddRule }: RuleFormProps){
     const [name, setName] = useState('');
     const [path, setPath] = useState('');
-    const [method, setMethod] = useState('GET');
-    const [statusCode, setStatusCode] = useState(200);
-    const [contentType, setContentType] = useState('application/json');
-    const [responseBody, setResponseBody] = useState('');
+    const [method, setMethod] = useState<HttpMethod>(HttpMethod.GET);
+    const [statusCode, setStatusCode] = useState<number>(200);
+    const [contentType, setContentType] = useState<ContentType>(ContentType.JSON);
+    const [responseBody, setResponseBody] = useState<string>('');
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -32,9 +35,9 @@ function RuleForm({ onAddRule }: RuleFormProps){
 
         setName('');
         setPath('');
-        setMethod('GET');
+        setMethod(HttpMethod.GET);
         setStatusCode(200);
-        setContentType('application/json');
+        setContentType(ContentType.JSON);
         setResponseBody('');
     };
 
@@ -43,7 +46,7 @@ function RuleForm({ onAddRule }: RuleFormProps){
             <h2>Add New Rule</h2>
             <form onSubmit={handleSubmit} className="rule-form">
                 <div>
-                    <label htmlFor="rule-name">Rule Name:</label>
+                    <label htmlFor="rule-name">Name:</label>
                     <input
                         type="text"
                         name="name"
@@ -67,20 +70,11 @@ function RuleForm({ onAddRule }: RuleFormProps){
                  <div>
                     <label htmlFor="rule-method">Method:</label>
                      {/* A select is usually better for method */}
-                    <select
-                        id="rule-method"
-                        name="method"
-                        value={method}
-                        onChange={(e) => setMethod(e.target.value)}
-                    >
-                        <option value="GET">GET</option>
-                        <option value="POST">POST</option>
-                        <option value="PUT">PUT</option>
-                        <option value="DELETE">DELETE</option>
-                        <option value="PATCH">PATCH</option>
-                        <option value="OPTIONS">OPTIONS</option>
-                        <option value="HEAD">HEAD</option>
-                    </select>
+                    <select value={method} onChange={(e) => setMethod(e.target.value as HttpMethod)} required>
+    {Object.values(HttpMethod).map(m => (
+        <option key={m} value={m}>{m}</option>
+    ))}
+</select>
                 </div>
                  <div>
                     <label htmlFor="rule-status">Status Code:</label>
@@ -97,14 +91,11 @@ function RuleForm({ onAddRule }: RuleFormProps){
                 </div>
                  <div>
                     <label htmlFor="rule-contentType">Content Type:</label>
-                    <input
-                        type="text"
-                        id="rule-contentType"
-                        name="contentType"
-                        value={contentType}
-                        onChange={(e) => setContentType(e.target.value)}
-                        required
-                    />
+                   <select value={contentType} onChange={(e) => setContentType(e.target.value as ContentType)} required>
+    {Object.values(ContentType).map(c => (
+        <option key={c} value={c}>{c}</option>
+    ))}
+</select>
                 </div>
                  <div>
                     <label htmlFor="rule-responseBody">Response Body (JSON or Text):</label>
