@@ -1,21 +1,20 @@
-import { FakeApiRule } from "./types/fakeApiRule";
+import { FakeApiRule } from "../types/fakeApiRule";
 import { Request, Response } from "express";
 import Express from "express";
 import Database from "better-sqlite3";
-import { RuleMap, HttpMethod, ContentType } from "./types/fakeApiRule";
-import * as DB from "./db";
+import { RuleMap, HttpMethod, ContentType } from "../types/fakeApiRule";
+import * as DB from "../db";
+
+// Store registered routes for cleanup
+const registeredRoutes = new Map<string, { method: string; path: string }>();
 
 /**
- * Dynamically registers an Express route for a single FakeApiRule.
- *
- * The HTTP method used to register the route is determined by the rule's `method` property.
- * The route path is determined by the rule's `path` property.
- * The route handler sends a response with the status code, content type, and response body
- * specified by the rule.
- *
- * If the rule's `contentType` property specifies a content type, the route will also check
- * that the request has the same content type. If the content types do not match, the route
- * handler will send a 415 error response.
+  იქმნება ახალი Express route
+ 
+HTTP-ის მეთდს განსაზღვრავს method ატრიბუტი , სად და როგორ გაიგზავნებას path განსაზღვრვრვრვვზ,
+დანარჩენი ატრიბუტები კი განსაზღვრავენ პასუხის სტატუს კოდს, ტიპს და რა დააბრუნოს.
+
+გამოგზავნილ რექვესთში ტიპი თუ არ არის განსაზღვრული ../types/fakeApiRule <= მანდ, ამოაგდებს 415 error response.
  *
  * @param rule The FakeApiRule to register a route for.
  * @param app The Express application to register the route with.
@@ -28,6 +27,10 @@ export function fakeARule(rule: FakeApiRule, app: Express.Express) {
   };
 
   /**
+   * კაროჩე, ეს ფუნქცია ამოწმებს ტაიპის სისწორე/შესაბამისობას
+   * ნერდული ეიაიური ახსნა დაუნ ბილოუ 
+   * 
+   * 
    * Middleware function to check that the request's 'Content-Type' header
    * matches the 'contentType' specified in the rule. If the headers do not
    * match, the middleware sends a 415 error response. If the headers match,
@@ -35,12 +38,18 @@ export function fakeARule(rule: FakeApiRule, app: Express.Express) {
    * @param req The Express Request object.
    * @param res The Express Response object.
    * @param next The next function in the middleware chain.
+   * 
    */
   const requestContentTypeMatcher = (
     req: Request,
     res: Response,
     next: Function
   ) => {
+    // ვსქიფოთ სანამ გეტ რექვესთებამდე არ მივალთ
+    if (req.method === 'GET') {
+      return next();
+    }
+
     const requestContentType = req.headers["content-type"];
     const expectedContentType = rule.contentType
       .toLowerCase()
@@ -50,7 +59,7 @@ export function fakeARule(rule: FakeApiRule, app: Express.Express) {
       ? requestContentType.toLowerCase().split(";")[0].trim()
       : "";
 
-    if (actualContentType === expectedContentType) {
+    if (actualContentType === expectedContentType || !requestContentType) {
       next();
     } else {
       res
@@ -60,7 +69,16 @@ export function fakeARule(rule: FakeApiRule, app: Express.Express) {
         );
     }
   };
+
   const method = rule.method.toLowerCase();
+  const routeKey = `${method}:${rule.path}`;
+  
+  // Remove existing route if it exists
+  if (registeredRoutes.has(routeKey)) {
+    removeRoute(app, rule.path, rule.method);
+  }
+
+  // Register the new route
   switch (method) {
     case "get":
       app.get(rule.path, requestContentTypeMatcher, responseHandler);
@@ -90,20 +108,56 @@ export function fakeARule(rule: FakeApiRule, app: Express.Express) {
       console.warn(
         `Unsupported HTTP method: '${rule.method}' for path '${rule.path}'. Skipping rule.`
       );
+      return;
+  }
+
+  // Track the registered route
+  registeredRoutes.set(routeKey, { method: rule.method, path: rule.path });
+  console.log(`Registered fake API route: ${rule.method} ${rule.path}`);
+}
+
+/**
+
+ * ვინაიდან ექსპრესის რეტარდებმა ვერ მოტვინეს რომ ხანდახან როუტები შეიძლება და წავშალოთ
+ * როგორც იტყოდა ემინემი THIS LOOKS LIKE A JOB FOR ME
+
+ */
+export function removeRoute(app: Express.Express, path: string, method: string) {
+  const routeKey = `${method.toLowerCase()}:${path}`;
+  
+  try {
+    // Access the router's stack (this is implementation-specific to Express)
+    const router = (app as any)._router;
+    if (!router || !router.stack) {
+      console.warn('Unable to access Express router stack for route removal');
+      return;
+    }
+
+    // Filter out the route we want to remove
+    const methodLower = method.toLowerCase();
+    router.stack = router.stack.filter((layer: any) => {
+      if (layer.route) {
+        const routePath = layer.route.path;
+        const routeMethods = Object.keys(layer.route.methods);
+        const hasMethod = routeMethods.includes(methodLower) || routeMethods.includes('_all');
+        
+        if (routePath === path && hasMethod) {
+          console.log(`Removed fake API route: ${method} ${path}`);
+          return false; // Remove this layer
+        }
+      }
+      return true; // Keep other layers
+    });
+
+    // Remove from our tracking
+    registeredRoutes.delete(routeKey);
+  } catch (error) {
+    console.error(`Error removing route ${method} ${path}:`, error);
   }
 }
 
 /**
- * Creates a fake API rule and persists it to the database. Registers the rule
- * to the in-memory mapping of rules. Dynamically registers an Express route
- * for the rule.
- * @param {FakeApiRule} rule - The rule to be created and persisted.
- * @param {Database.Database} db - The database connection to use for the operation.
- * @param {RuleMap} mapping - The in-memory mapping of rules.
- * @param {Express.Express} app - The Express application to register the route with.
- * @throws Will throw an error if the rule contains an empty field.
- * @throws Will throw an error if the rule method is not of type HttpMethod.
- * @throws Will throw an error if the rule contentType is not of type ContentType.
+ეგ მართლაც ელემენტარულია და გასაგებია
  */
 export function createRule(
   rule: FakeApiRule,
@@ -148,6 +202,10 @@ export function createRule(
 }
 
 /**
+ * თურმე ეგეც საჭიროა
+ * მერე შეიძლება შეიცვალოს ვინაიდან ფრონტში არ ჩამიხედავს დიდად და დაჩისთან გავარკვევ ფ2ფ
+ * 
+ * 
  * Formats a message string according to the specified content type.
  *
  * @param {string} message - The message to be formatted.
@@ -174,4 +232,21 @@ function formatMessage(message: string, contentType: ContentType): string {
     default:
       return message;
   }
+}
+
+/**
+გეთოლ
+ */
+export function getRegisteredRoutes(): Array<{ method: string; path: string }> {
+  return Array.from(registeredRoutes.values());
+}
+
+/**
+ამოვგადავშალოთ ყველა რეგისტრირებული როუტი
+ */
+export function clearAllRoutes(app: Express.Express) {
+  const routes = Array.from(registeredRoutes.values());
+  routes.forEach(route => {
+    removeRoute(app, route.path, route.method);
+  });
 }
