@@ -1,10 +1,16 @@
+import dotenv from "dotenv";
+dotenv.config();
+
+
 import request from "supertest";
 import express from "express";
 import { initializeRouter } from "../src/routes/ruleManager";
 import { initializeDB, seedDatabase } from "../src/db";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = "test-secret";
+
+
+//const JWT_SECRET = "test-secret";
 
 describe("RuleManager Router", () => {
   let token: string;
@@ -13,7 +19,9 @@ describe("RuleManager Router", () => {
   let db: any;
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = JWT_SECRET;
+    const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) throw new Error("JWT_SECRET not found in environment");
+
 
     db = await initializeDB();
     await seedDatabase(db);
