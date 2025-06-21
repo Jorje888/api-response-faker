@@ -8,6 +8,7 @@ import * as DB from "./db";
 import { createRule, fakeARule } from "./util";
 import bcrypt from "bcrypt";
 import { format } from "path";
+import cors from 'cors';
 
 const fake_api_rules: Map<
   { path: string; method: string; user: string },
@@ -21,6 +22,7 @@ const rules = DB.getAllRules(db);
 dotenv.config();
 const PORT = process.env.PORT || 3000;
 const app = express();
+app.use(cors());
 app.use(express.json());
 const httpServer = createServer(app);
 
@@ -39,7 +41,7 @@ rules.forEach((rule) => {
 
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: "http://localhost:3001",
+    origin: "*",
     methods: ["GET", "POST"],
   },
 });
