@@ -1,0 +1,70 @@
+- name: Set up repository
+  shell:
+    cmd: |
+      sudo mkdir -p /etc/apt/keyrings/  
+      wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | sudo tee /etc/apt/keyrings/grafana.gpg > /dev/null
+      echo  "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
+
+- name: Install Grafana
+  apt:
+    name: grafana
+    state: present
+    update_cache: yes
+
+- name: "Grafana configuration file copy"
+  template:
+    src: "grafana.conf.j2"
+    dest: /etc/grafana/grafana.ini
+  notify:
+    - systemd_reload
+    - event_restart_grafana
+
+- name: "Grafana server started"
+  service:
+    name: grafana-server
+    enabled: true
+    state: started
+
+- name: Wait for Grafana API to be available
+  wait_for:
+    host: 127.0.0.1
+    port: 3000
+    delay: 5
+    timeout: 60
+    state: started
+
+- name: Create a Grafana organization
+  community.grafana.grafana_organization:
+    grafana_url: "http://localhost:3000"
+    url_username: "admin"
+    url_password: "admin"
+    name: "Software Engineering Final"
+    state: present
+  ignore_errors: yes
+
+- name: Create prometheus datasource
+  community.grafana.grafana_datasource:
+    grafana_url: "http://10.14.0.140:3000"
+    name: prometheus_data
+    ds_type: prometheus
+    ds_url: http://10.14.0.140:9090
+    org_id: 2
+    tls_skip_verify: true
+
+- name: Download the dashboard JSON
+  get_url:
+    url: "https://grafana.com/api/dashboards/1860/revisions/37/download"
+    dest: "/tmp/prometheus_dashboard.json"
+
+- name: Replace reference in the JSON
+  replace:
+    path: "/tmp/prometheus_dashboard.json"
+    regexp: '"datasource": ".*?"'
+    replace: '"datasource": "prometheus_data"'
+
+- name: Create the grafana dashboard
+  community.grafana.grafana_dashboard:
+    grafana_url: "http://10.14.0.140:3000"
+    org_id: 2
+    state: present
+    path: "/tmp/prometheus_dashboard.json"

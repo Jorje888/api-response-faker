@@ -1,0 +1,9 @@
+- name: Reload systemd
+  command: systemctl daemon-reload
+  listen: systemd_reload
+
+- name: "Restart the Grafana service."
+  service:
+    name: grafana-server
+    state: restarted
+  listen: event_restart_grafana
