@@ -20,6 +20,10 @@ const [rules, setRules] = useState<Rule[]>([]);
 const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('authToken'));;
 
   useEffect(() => {
+    if (isLoggedIn) {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+      socket.auth = { token: token };
     socket.connect();
 
     socket.on('connect', () => {
@@ -34,18 +38,31 @@ const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('authToken')
       setRules(prevRules => [...prevRules, data.receivedRule]);
     });
 
+    socket.on('connect_error', (err) => {
+          console.error('Socket connection error:', err.message);
+        });
+
     socket.on('ruleAddError', (error: any) => {
       error.printstacktrace(); // specific error details
     });
-
+  }
+  }else{
+     socket.disconnect();
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('ruleAddedSuccess');
+      socket.off('connect_error');
+      socket.off('ruleAddError');
+  }
     return () => {
       socket.disconnect();
       socket.off('connect');
       socket.off('disconnect');
       socket.off('ruleAddedSuccess');
       socket.off('ruleAddError');
+      socket.off('connect_error');
     };
-  }, []);
+  }, [isLoggedIn]);
 
   const handleAddRule = (newRule: Rule) => {
     socket.emit('addRule', newRule);
