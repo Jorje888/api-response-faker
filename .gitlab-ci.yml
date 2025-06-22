@@ -1,0 +1,38 @@
+stages:
+  - terraform
+  - ansible
+  - cleanup
+  - destroy
+
+terraform:
+  stage: terraform
+  script:
+    - cd terraform
+    - terraform init
+    - terraform validate
+    - terraform refresh
+    - terraform plan -out=planfile
+    - terraform apply -input=false "planfile"
+
+ansible:
+  stage: ansible
+  script:
+    - cd ansible
+    - sudo chmod 400 $KEY_PAIR
+    - echo "private_key_file = $KEY_PAIR" >> ansible.cfg
+    - ansible-playbook playbooks/monitoring.yaml  --extra-vars "ansible_ssh_retries=3 ansible_ssh_retry_delay=10"
+
+cleanup:
+  stage: cleanup
+  script:
+    - cd terraform
+    - terraform init
+    - terraform destroy --target aws_vpc_peering_connection.peering -auto-approve
+
+destroy:
+  stage: destroy
+  script:
+    - cd terraform
+    - terraform init
+    - terraform destroy -auto-approve
+  when: manual
