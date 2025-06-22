@@ -1,9 +1,7 @@
 import styles from './LoginPage.module.css';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // usenavigate დავამატეთ , რადგან თუკი გვჭირდება იუზერი გადავიყვანოთ სხვა გვერდზე , ეს გაგვიადვილებს საქმეს
 import React, { useState } from 'react';
 import socket from './socket';
-
-
  // სალოგინო გვერდზე (და სარეგისტრაციო გვერდზეც) არის ის , რომ
   // 1. ყველაფერს უნდა გავუწეროთ რა ტიპია , განსაკუთრებით თუკი არის ყველაზე მთავარი რაღაც რაც მთლიან მექანიზმს ქლოქავს (მაგალითად handlesubmit ში e ს განსაზღვრა არის აუცილებელი)
   // 2. როდესაც ვწერთ e.preventDefault(); , ეს გვეხმარება იმაში რომ ყველაფერი არ გადარესტარტდეს , და 
@@ -11,14 +9,17 @@ import socket from './socket';
   // და ამიტომ აქ ვაზუსტებთ რა შემოყავს კლიენტს , მერე , სოკეტზე ვაგზავნით რომ რეგისტრაციაში შემოსვლის მცდელობა იყო , და ვუშვებთ თითონ ინფორმაციას ვუშვებთ რაც შემოიყვნეს
   // და საბოლოოდ ისევ ვარესტარტებთ და ყველაფერი თავიდან არის შესაყვანი 
 
+  // loginPageProps შევქმენი რადგან loginPage იყენებს App.tsx დან წამოღებულ ფუნქციას სახელად handleLoginSuccess აიღებს
+  //  , და გამოიძახებს (ნუ ეს მაშინ მოხდება რა თქმა უნდა , როდესაც დალოგინება წარმატებული იქნება.)
+  interface LoginPageProps {
+  onLoginSuccess: () => void;
+}
 
-function LoginPage() {
+// აი აქ უკვე ვხედავთ ამ ფუნქციის განმარტებას , და როცა კი დავწერთ ამ ფუნქციის გამოძახებას , მაშინვე გამოიძახებს ეს App.tsx ში handleSubmit ფუნქციას , უფრო მეტი ინფორმაციისთვის გადადით App.tsx ში...
+function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-    // ნუ ეს უკვე გასაგები თუ არ არის , სტაილი არის loginPage.module.css იდან , 
-    // და მერე ამ სტაილის formcontainer ს რომ ვანიჭებთ სახელად , ამავდროულად ენიჭება ის სტილიც 
-    // რაც ამ კლასის სახელით ცნობილ კლასს აქვს გაწერილი css ში.
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const loginData = { email, password };

@@ -16,6 +16,8 @@ import { Link } from 'react-router-dom';
 
 function App() {
 const [rules, setRules] = useState<Rule[]>([]);
+//შევქმენით ახალი ტიპი რომეიც ამოწმებს დალოგინებულენბი ვართ თუ არა , და ამის მერე (დეფაულტად არ ვართ), როდესაც დალოგინებულები ვიქნებით , შეიცვლება ეს თრუდ , და გამოვაჩენთ თითონ აპის იმ ნაწილს რომელიც ჯერჯერობით დამალული არ არის)  
+const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     socket.connect();
@@ -48,6 +50,10 @@ const [rules, setRules] = useState<Rule[]>([]);
   const handleAddRule = (newRule: Rule) => {
     socket.emit('addRule', newRule);
   };
+ // უკვე ავხსენი რასაც უნდა აკეთებდეს ეს ფუნქცია , ფაქტობრივად სვიჩია , როდესაც დალოგინდები , ჩაგერთვება კონტენტი , თუ გამოხვალ , გამოირთვება კონტენტი
+   const handleLoginSuccess = () => {
+    setIsLoggedIn(true);
+  }
 
   return (
     <div className='App'>
@@ -61,7 +67,7 @@ const [rules, setRules] = useState<Rule[]>([]);
       <main style={{ padding: '1rem' }}>
         <Routes>
           {/*აქ ვსვამთ სარეგიტრაციო და სალოგინო ლინკებს , და ანუ აქ იმ აგებულ ლინკებს რომ დავაწვებით სად გადაგვიყვანს ეგაა მოცემული*/}
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login" element={<LoginPage onLoginSuccess={handleLoginSuccess}/>} />
           <Route path="/register" element={<RegisterPage />} />
           {/*ეს ელემენტი იგივე სახლში მიდის , და ელემენტის აღწერაში იგივე გავუწერე , რაც უკვე იყო გაწერილი App.tsx ში , 
           უბრალოდ მაინც რომ შემენარჩუნებინა ფუნქციონალი ასე ჯობდა რომ გამეკეთებინა*/}
