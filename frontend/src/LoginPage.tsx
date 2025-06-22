@@ -18,6 +18,7 @@ import React, { useState } from 'react';//სოკეტი აღარ გვ
 function LoginPage({ onLoginSuccess }: LoginPageProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const navigate = useNavigate();
 
   // როგორც რეგისტრაციაში , აქაც ვუშვებთ api მოთხოვნას ლოკალჰოსტ 3000/login ზე post request და raw data დ ვაძლევთ ისევ 
   // ემაილს (იუზერნაიმს) და პაროლს ჯეისონის სახით ჩაწერილებს
@@ -42,6 +43,7 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
       console.log('Login successful!', data);
       localStorage.setItem('authToken', data.token);
       onLoginSuccess();
+       navigate('/'); 
     } catch (err: any) {
       console.error('There was an error during login:', err);
     }

@@ -55,6 +55,13 @@ const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('authToken')
     setIsLoggedIn(true);
   }
 
+   const handleLogout = () => {
+    localStorage.removeItem('authToken');
+    setIsLoggedIn(false);
+    console.log('User logged out. isLoggedIn is now:', false);
+    // The useEffect above will handle disconnecting the socket when isLoggedIn becomes false
+  };
+
   return (
     <div className='App'>
   <BrowserRouter>
@@ -66,8 +73,15 @@ const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('authToken')
         <Link to="/login" style={{ marginRight: '1rem' }}>Login</Link>
         <Link to="/register">Register</Link>
          </>
-          ) : ( // ჯერ არაფერს არ ვაჩვენებთ თუ ვართ დალოგინებულები
-          <></>
+          ) : ( // დავამატოთ ლოგაუთის ღილაკი
+          <>
+          <button
+              onClick={handleLogout}
+              style={{ background: 'none', border: 'none', color: 'blue', textDecoration: 'underline', cursor: 'pointer' }}
+            >
+              Logout
+            </button>
+          </>
           )}
       </nav>
       <main style={{ padding: '1rem' }}>
