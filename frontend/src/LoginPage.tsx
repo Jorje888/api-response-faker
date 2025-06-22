@@ -1,7 +1,6 @@
 import styles from './LoginPage.module.css';
 import { Link, useNavigate } from 'react-router-dom'; // usenavigate დავამატეთ , რადგან თუკი გვჭირდება იუზერი გადავიყვანოთ სხვა გვერდზე , ეს გაგვიადვილებს საქმეს
-import React, { useState } from 'react';
-import socket from './socket';
+import React, { useState } from 'react';//სოკეტი აღარ გვჭირდება
  // სალოგინო გვერდზე (და სარეგისტრაციო გვერდზეც) არის ის , რომ
   // 1. ყველაფერს უნდა გავუწეროთ რა ტიპია , განსაკუთრებით თუკი არის ყველაზე მთავარი რაღაც რაც მთლიან მექანიზმს ქლოქავს (მაგალითად handlesubmit ში e ს განსაზღვრა არის აუცილებელი)
   // 2. როდესაც ვწერთ e.preventDefault(); , ეს გვეხმარება იმაში რომ ყველაფერი არ გადარესტარტდეს , და 
@@ -17,17 +16,37 @@ import socket from './socket';
 
 // აი აქ უკვე ვხედავთ ამ ფუნქციის განმარტებას , და როცა კი დავწერთ ამ ფუნქციის გამოძახებას , მაშინვე გამოიძახებს ეს App.tsx ში handleSubmit ფუნქციას , უფრო მეტი ინფორმაციისთვის გადადით App.tsx ში...
 function LoginPage({ onLoginSuccess }: LoginPageProps) {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // როგორც რეგისტრაციაში , აქაც ვუშვებთ api მოთხოვნას ლოკალჰოსტ 3000/login ზე post request და raw data დ ვაძლევთ ისევ 
+  // ემაილს (იუზერნაიმს) და პაროლს ჯეისონის სახით ჩაწერილებს
+   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const loginData = { email, password };
-    console.log('Sending login data to backend:', loginData);
-    socket.emit('loginAttempt', loginData);
-    setEmail('');
-    setPassword('');
+
+    try {
+      const response = await fetch('http://localhost:3000/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await response.json(); 
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed. Please check your credentials.');
+      }
+      // აი აქ უკვე გვადგება ის ფუნქცია რომელიც იყო გაწერილი წინა ქომითზე, რომ ახლა დასვიჩოს App.tsx მა და დაგვანახოს გვერდის
+      //  კონტენტი , იმის მაგივრად რომ ცარიელი გვერდი გვანახოს.
+      console.log('Login successful!', data);
+      localStorage.setItem('authToken', data.token);
+      onLoginSuccess();
+    } catch (err: any) {
+      console.error('There was an error during login:', err);
+    }
   };
+
   return (
       <div className={styles.formContainer}> 
        <div className={styles.formContainer}> 
@@ -44,7 +63,7 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
           ნუ აქ ონჩეინჯზე რომ იცვლება ნიშნავს რომ სთეითიც ისე შეიცვლება თითონ იმეილის ,
           როგორც თითონ იმეილი ჩაიწერებათითონ ამ ლეიბლში.
           */}
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required/>
+          <input type="email" value={username} onChange={(e) => setUsername(e.target.value)} required/>
         </div>
         <div className={styles.formGroup}>
           <label>Password: </label>
