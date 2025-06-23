@@ -4,7 +4,8 @@ import socket from './socket';
 import React, { useState } from 'react';
 
 function RegisterPage() {
-  const [email, setEmail] = useState('');
+  // ემაილის მაგივრად პოსტ მეთოდში იღებენ უზერნეიმს , და ამიტო მომიწია გადარქმევა
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   // სარეგისტრაციო გვერდზე (და დასალოგინებელ გვერდზეც) არის ის , რომ
   // 1. ყველაფერს უნდა გავუწეროთ რა ტიპია , განსაკუთრებით თუკი არის ყველაზე მთავარი რაღაც რაც მთლიან მექანიზმს ქლოქავს (მაგალითად handlesubmit ში e ს განსაზღვრა არის აუცილებელი)
@@ -12,13 +13,41 @@ function RegisterPage() {
   // მთლიანი ფეიჯი არ დაიწყოს თავიდან , ეს დიდ პრობლემას შეუქმნის კავშირს სოკეტებში
   // და ამიტომ აქ ვაზუსტებთ რა შემოყავს კლიენტს , მერე , სოკეტზე ვაგზავნით რომ რეგისტრაციაში შემოსვლის მცდელობა იყო , და ვუშვებთ თითონ ინფორმაციას ვუშვებთ რაც შემოიყვნეს
   // და საბოლოოდ ისევ ვარესტარტებთ და ყველაფერი თავიდან არის შესაყვანი 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async(e: React.FormEvent) => {
+    //რო არ გადაიტვირთოს ყველაფერი თავიდან და არ გაწყდეს კავშირი ვწერთ e.preventDefault();
     e.preventDefault();
-    const registrationData = { email, password };
-    console.log('Registering with:', registrationData);
-    socket.emit('registerAttempt', registrationData);
-    setEmail('');
-    setPassword('');
+
+    // ეს იგივეა , პოსტმენში რომ გადავცე POST method ში
+    // ინფორმაცია და raw info ში ჩავუწერო უზერნეიმი და პასვორდი ,
+    // და მერე რა პასუხსაც მივიღებთ , ის შევინახოთ რაღაც კონსტანტაში. ez 
+    const registrationData = { username, password };
+     try {
+    const response = await fetch('http://localhost:3000/register', { 
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(registrationData),
+    });
+
+    // მერე შევამოწმოთ ყველაფერი რიგზე თუ აქვს ამ რესპონსს.
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Registration failed!');
+    }
+
+    // აქ ჯეისონის ობიექტად ჩაწერილ დეითას ვაბრუნებთ
+    const data = await response.json();
+    console.log('Registration successful! Received data:', data);
+
+  } catch (error) {
+    console.error('There was an error during registration:', error);
+  }
+
+  // რომ შეიყვანენ რეგისტრაციაში ემაილს და პაროლს , უნდა გადავშალოთ
+  //  ცარიელებად , რომ ვაგრძნობინოთ იუზერს რომ სახელი შეყვანილია ბაზაში , რომ მერე შევადაროთ.
+  setPassword('');
+  setUsername('');
   };
   return (
     // ნუ ეს უკვე გასაგები თუ არ არის , სტაილი არის registerPage.module.css იდან , 
@@ -39,7 +68,7 @@ function RegisterPage() {
           ნუ აქ ონჩეინჯზე რომ იცვლება ნიშნავს რომ სთეითიც ისე შეიცვლება თითონ იმეილის ,
           როგორც თითონ იმეილი ჩაიწერებათითონ ამ ლეიბლში.
           */}
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input type="email" value={username} onChange={(e) => setUsername(e.target.value)} />
         </div>
         <div className={styles.formGroup}>
           <label>Password: </label>

@@ -8,7 +8,9 @@ import { FakeApiRule } from "./types/fakeApiRule";
 import * as DB from "./db";
 import { createRule, fakeARule } from "./util";
 import bcrypt from "bcrypt";
+import { format } from "path";
 import { initializeRouter as initializeRuleManager } from "./routes/ruleManager";
+
 
 const fake_api_rules: Map<
   { path: string; method: string; user: string },
@@ -22,11 +24,9 @@ const rules = DB.getAllRules(db);
 dotenv.config();
 const PORT = process.env.PORT || 3000;
 const app = express();
-
-// Middleware
 app.use(express.json());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:3001",
+  origin: "*",
   credentials: true
 }));
 
@@ -51,7 +51,7 @@ app.use('/api/rules', ruleManagerRouter);
 
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3001",
+    origin: "*",
     methods: ["GET", "POST"],
   },
 });
