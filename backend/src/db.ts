@@ -209,3 +209,36 @@ export function seedDatabase(db: Database.Database) {
     addRule(db, rule);
   }
 }
+
+export function getRuleById(
+  db: Database.Database,
+  id: number
+): FakeApiRule | null {
+  try {
+    const statement = db.prepare(
+      "SELECT username, path, method, statusCode, contentType, responseBody FROM fake_api_rules WHERE id = ?"
+    );
+    const result = statement.get(id) as FakeApiRulePayload | undefined;
+    return result ? processPayload([result])[0] : null;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(`Database error: ${error.message}`);
+    }
+    throw new Error("An unknown error occurred while accessing the database");
+  }
+}
+
+export function removeRule(db: Database.Database, id: number) {
+  try {
+    const statement = db.prepare("DELETE FROM fake_api_rules WHERE id = ?");
+    const result = statement.run(id);
+    if (result.changes === 0) {
+      throw new Error(`No rule found with id ${id}`);
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(`Database error: ${error.message}`);
+    }
+    throw new Error("An unknown error occurred while accessing the database");
+  }
+}
