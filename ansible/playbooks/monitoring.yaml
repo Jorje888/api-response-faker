@@ -1,0 +1,39 @@
+---
+- hosts: backend
+  become: yes
+  become_method: sudo
+  roles:
+    - backend
+
+- hosts: frontend
+  become: yes
+  become_method: sudo
+  roles:
+    - frontend
+
+- hosts: node_exporter
+  become: yes
+  become_method: sudo
+  roles:
+    - prometheus_node_exporter
+
+- hosts: prometheus
+  become: yes
+  become_user: root
+  become_method: sudo
+  roles:
+    - prometheus
+
+- hosts: grafana
+  become: yes
+  become_method: sudo
+  roles:
+    - grafana
+
+- hosts: alertmanager
+  become: yes
+  gather_facts: no
+  become_user: root
+  become_method: sudo
+  roles:
+    - alertmanager
