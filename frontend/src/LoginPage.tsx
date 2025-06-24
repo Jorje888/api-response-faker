@@ -42,6 +42,7 @@ function LoginPage({ onLoginSuccess }: LoginPageProps) {
       //  კონტენტი , იმის მაგივრად რომ ცარიელი გვერდი გვანახოს.
       console.log('Login successful!', data);
       localStorage.setItem('authToken', data.token);
+      localStorage.setItem('username', username);
       onLoginSuccess();
        navigate('/'); 
     } catch (err: any) {

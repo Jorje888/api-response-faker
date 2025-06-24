@@ -11,6 +11,7 @@ import LoginPage from './LoginPage';
 import RegisterPage from './RegisterPage';
 import { Link } from 'react-router-dom';
 import WelcomePage from './WelcomePage';
+import MyRulesPage from './MyRulesPage';
 
 // ამ კოდს შევცვლი იმის მიხედვით როგორ მომიწევს გატესტვა , საიდან რისი ჩამოტვირთვა მომიწევს ,
 // სოკეტიდან როგორ , რა ბრძანებთ მიიღებენ ინფორმაციას
@@ -94,6 +95,7 @@ const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('authToken')
          </>
           ) : ( // დავამატოთ ლოგაუთის ღილაკი
           <>
+          <Link to="/my-rules" style={{ marginRight: '1rem' }}>My Rules</Link>
           <button
               onClick={handleLogout}
               style={{ background: 'none', border: 'none', color: 'blue', textDecoration: 'underline', cursor: 'pointer' }}
@@ -110,6 +112,12 @@ const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('authToken')
           <Route path="/register" element={<RegisterPage />} />
           {/*ეს ელემენტი იგივე სახლში მიდის , და ელემენტის აღწერაში იგივე გავუწერე , რაც უკვე იყო გაწერილი App.tsx ში , 
           უბრალოდ მაინც რომ შემენარჩუნებინა ფუნქციონალი ასე ჯობდა რომ გამეკეთებინა*/}
+          <Route 
+              path="/my-rules" 
+              element={
+                  <MyRulesPage />
+              }
+            />
           <Route path="/" element={
               isLoggedIn ? (
             <>
