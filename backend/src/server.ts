@@ -208,6 +208,73 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Handle adding new rules via Socket.IO
+  socket.on("addRule", async (newRule: any) => {
+    try {
+      const { path, method, statusCode, contentType, responseBody } = newRule;
+      
+      // Validate required fields
+      if (!path || !method || !statusCode || !contentType || !responseBody) {
+        socket.emit("ruleAddError", { error: "Missing required fields" });
+        return;
+      }
+
+      const parsedStatusCode = parseInt(statusCode);
+      if (isNaN(parsedStatusCode) || parsedStatusCode < 100 || parsedStatusCode > 599) {
+        socket.emit("ruleAddError", { error: "Invalid status code" });
+        return;
+      }
+
+      // Check for duplicate rules
+      const allRules = DB.getAllRulesByUsername(db, username);
+      if (allRules.some(r => r.path === path && r.method === method)) {
+        socket.emit("ruleAddError", { error: "Rule already exists" });
+        return;
+      }
+
+      // Create the rule
+      const rule: FakeApiRule = {
+        user: username,
+        path,
+        method,
+        statusCode: parsedStatusCode,
+        contentType,
+        responseBody,
+      };
+
+      // Add to database and register route
+      DB.addRule(db, rule);
+      fakeARule(rule, app);
+
+      // Emit success response with the added rule
+      socket.emit("ruleAddedSuccess", { 
+        status: "ok", 
+        receivedRule: rule 
+      });
+
+    } catch (error: any) {
+      console.error(`Error adding rule for ${username}:`, error);
+      socket.emit("ruleAddError", { error: error.message || "Failed to add rule" });
+    }
+  });
+
+  // Handle getting user's rules via Socket.IO
+  socket.on("getMyRules", async (requestedUsername: string) => {
+    try {
+      // Verify the user is requesting their own rules
+      if (requestedUsername !== username) {
+        socket.emit("ruleAddError", { error: "Unauthorized access to rules" });
+        return;
+      }
+
+      const userRules = DB.getAllRulesByUsername(db, username);
+      socket.emit("yourRules", userRules);
+    } catch (error) {
+      console.error(`Error fetching rules for ${username}:`, error);
+      socket.emit("ruleAddError", { error: "Failed to fetch rules" });
+    }
+  });
+
   // Handle liveness testing through Socket.IO
   socket.on("test_liveness", async (data) => {
     try {
@@ -261,7 +328,7 @@ app.get('/health', (req, res) => {
 });
 
 // Liveness status endpoint
-app.get('/api/liveness-status', (req, res) => {
+app.get('/liveness-status', (req, res) => {
   // Return as a JSON array for compatibility
   res.json([...livenessStatusMap.values()]);
 });
