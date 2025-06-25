@@ -1,0 +1,22 @@
+all:
+  hosts:
+  children:
+    grafana:
+      hosts:
+        10.14.0.140:
+    prometheus:
+      hosts:
+        10.14.0.140:
+    alertmanager:
+      hosts:
+        10.14.0.140:
+    node_exporter:
+      hosts:
+        10.14.0.10:
+        10.14.0.70:
+    frontend:
+      hosts:
+        10.14.0.70:
+    backend:
+      hosts:
+        10.14.0.10:

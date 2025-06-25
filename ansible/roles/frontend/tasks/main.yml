@@ -1,0 +1,48 @@
+- name: Install packages
+  apt:
+    name:
+      - nginx
+      - nodejs
+      - npm
+    update_cache: true
+  become: true
+
+- name: Clone a git repository
+  git:
+    repo: https://github.com/Jorje888/api-response-faker/
+    dest: /home/ubuntu/repo
+
+- name: Install node modules
+  community.general.npm:
+    path: /home/ubuntu/repo/frontend
+
+# - name: Build frontend
+#   command: npm run build
+#   args:
+#     chdir: /home/ubuntu/repo/frontend
+
+# - name: Copy frontend build directory
+#   synchronize:
+#     src: /home/ubuntu/frontend/repo/dist
+#     dest: /var/www/frontend/dist
+
+- name: Launch development for frontend detached
+  command: npm run dev
+  args:
+    chdir: /home/ubuntu/repo/frontend
+  async: 3600
+  poll: 0
+
+- name: Set up Nginx
+  template:
+    dest: /etc/nginx/sites-available/default
+    src: default.j2
+
+- name: Start Nginx
+  service:
+    name: nginx
+    state: started
+
+- name: Daemon reload
+  systemd:
+    daemon_reload: yes

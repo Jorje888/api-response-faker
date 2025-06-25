@@ -130,4 +130,14 @@ To allow for parallel work, we'll divide the project into three main areas, focu
     - [ ] Display a color-coded indicator (green for live, red for down).
     - [ ] On hover/click, show a tooltip/pop-up with `lastChecked` timestamp and `failureReason` (if applicable).
 
+
+**what did I changed?**
+  -  socket.on('connect',...) // nothing to much here
+  -   const handleAddRule = (newRule: Rule) => { socket.emit('addRule', newRule); }; // you need listen to this  , to add the rule actually.
+  -     socket.on('ruleAddedSuccess', (data: { status: string, receivedRule: Rule }) => {...});  // you need to give me the idea that yes, we added the rule , or if we did not , tell me that as well (in the status) , so the rule that I just gave you , give it back to me please and , yeah , that is mostly it.
+  -     socket.on('ruleAddError', (error: any) => {});   // give me idea if this does not work as well 
+  -     socket.emit('getMyRules', username); // I get the username from the login , so you need to give me all the rules that this person has next time 
+  -        socket.on('yourRules', onYourRules); // when you get the getMyRules , you need to give me the rules of the person by transimming it with socket.emit('yourRules', rules-of-mine)
+
+  
 ---

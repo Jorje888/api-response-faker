@@ -4,11 +4,14 @@ import { Server as SocketIOServer } from "socket.io";
 import jsonwebtoken from "jsonwebtoken";
 import dotenv from "dotenv";
 import cors from "cors";
+import axios from "axios";
 import { FakeApiRule } from "./types/fakeApiRule";
 import * as DB from "./db";
 import { createRule, fakeARule } from "./util";
 import bcrypt from "bcrypt";
+import { format } from "path";
 import { initializeRouter as initializeRuleManager } from "./routes/ruleManager";
+
 
 const fake_api_rules: Map<
   { path: string; method: string; user: string },
@@ -19,14 +22,69 @@ export const db = DB.initializeDB();
 DB.seedDatabase(db);
 const rules = DB.getAllRules(db);
 
+// In-memory liveness status map
+interface LivenessStatus {
+  ruleId: number;
+  isLive: boolean;
+  lastChecked: string;
+  failureReason?: string;
+}
+
+const livenessStatusMap = new Map<number, LivenessStatus>();
+
+// Background process to check liveness of all active rules every 10 seconds
+const checkLiveness = async () => {
+  try {
+    const allRules = DB.getAllRulesWithIds(db);
+    
+    for (const rule of allRules) {
+      try {
+        // Make internal HTTP request to the fake endpoint
+        const response = await axios({
+          method: rule.method.toLowerCase(),
+          url: `http://localhost:${PORT}${rule.path}`,
+          headers: {
+            'Content-Type': rule.contentType
+          },
+          timeout: 5000 // 5 second timeout
+        });
+
+        // Compare response against rule definition
+        const isLive = 
+          response.status === rule.statusCode &&
+          response.headers['content-type']?.includes(rule.contentType) &&
+          response.data === rule.responseBody;
+
+        livenessStatusMap.set(rule.id, {
+          ruleId: rule.id,
+          isLive,
+          lastChecked: new Date().toISOString(),
+          failureReason: isLive ? undefined : 'Response mismatch'
+        });
+
+      } catch (error: any) {
+        livenessStatusMap.set(rule.id, {
+          ruleId: rule.id,
+          isLive: false,
+          lastChecked: new Date().toISOString(),
+          failureReason: error.message || 'Request failed'
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error in liveness check:', error);
+  }
+};
+
+// Start the background process
+setInterval(checkLiveness, 10000); // Run every 10 seconds
+
 dotenv.config();
 const PORT = process.env.PORT || 3000;
 const app = express();
-
-// Middleware
 app.use(express.json());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:3001",
+  origin: "*",
   credentials: true
 }));
 
@@ -51,7 +109,7 @@ app.use('/api/rules', ruleManagerRouter);
 
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3001",
+    origin: "*",
     methods: ["GET", "POST"],
   },
 });
@@ -137,6 +195,12 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   });
+});
+
+// Liveness status endpoint
+app.get('/api/liveness-status', (req, res) => {
+  // Return as a JSON array for compatibility
+  res.json([...livenessStatusMap.values()]);
 });
 
 // User Registration Route

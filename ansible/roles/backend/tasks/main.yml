@@ -1,0 +1,29 @@
+- name: Install packages
+  apt:
+    name:
+      - nodejs
+      - npm
+    update_cache: true
+  become: true
+
+- name: Clone a git repository
+  git:
+    repo: https://github.com/Jorje888/api-response-faker/
+    dest: /home/ubuntu/repo
+
+- name: Install node modules
+  community.general.npm:
+    path: /home/ubuntu/repo/backend
+
+- name: Create .env file
+  copy:
+    content: "JWT_SECRET=placeholder"
+    dest: /home/ubuntu/repo/backend/.env
+    force: yes
+
+- name: Launch development for backend detached
+  command: npm run dev
+  args:
+    chdir: /home/ubuntu/repo/backend
+  async: 3600
+  poll: 0

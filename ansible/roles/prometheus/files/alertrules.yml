@@ -1,0 +1,38 @@
+groups:
+  - name: alert.rules
+    rules:
+      - alert: InstanceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: "critical"
+        annotations:
+          summary: "Your instance {{ $labels.instance }} is down my Liege"
+          description: "{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 1 minutes."
+
+      - alert: CpuUsageStopped - frontend
+        expr: absent(node_cpu_seconds_total{job="frontend",mode="idle"} == 0 or up{job="frontend"})
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "cpu usage stopped in node {{ $labels.instance }} of job {{ $labels.job }} (instance is down?), your Majesty"
+          description: "Node {{ $labels.instance }} of job {{ $labels.job }} stopped sending cpu activity for more than 15 sec."
+
+      - alert: CpuUsageStopped - backend
+        expr: absent(node_cpu_seconds_total{job="backend",mode="idle"} == 0 or up{job="backend"})
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "cpu usage stopped in node {{ $labels.instance }} of job {{ $labels.job }} (instance is down?), your Majesty"
+          description: "Node {{ $labels.instance }} of job {{ $labels.job }} stopped sending cpu activity for more than 15 sec."
+
+      - alert: CpuUsageStopped - prometheus
+        expr: absent(node_cpu_seconds_total{job="prometheus",mode="idle"} == 0 or up{job="prometheus"})
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "cpu usage stopped in node {{ $labels.instance }} of job {{ $labels.job }} (instance is down?), your Majesty"
+          description: "Node {{ $labels.instance }} of job {{ $labels.job }} stopped sending cpu activity for more than 15 sec."
