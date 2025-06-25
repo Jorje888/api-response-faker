@@ -39,28 +39,64 @@ const checkLiveness = async () => {
     
     for (const rule of allRules) {
       try {
-        // Make internal HTTP request to the fake endpoint
-        const response = await axios({
-          method: rule.method.toLowerCase(),
-          url: `http://localhost:${PORT}${rule.path}`,
-          headers: {
-            'Content-Type': rule.contentType
-          },
-          timeout: 5000 // 5 second timeout
-        });
+        // Use Socket.IO to check liveness instead of HTTP requests
+        // Create a temporary socket connection for testing
+        const testSocket = io.sockets.sockets.values().next().value;
+        
+        if (testSocket) {
+          // Emit a test event and wait for response
+          testSocket.emit('test_liveness', {
+            path: rule.path,
+            method: rule.method,
+            expectedStatus: rule.statusCode,
+            expectedContentType: rule.contentType,
+            expectedBody: rule.responseBody
+          });
 
-        // Compare response against rule definition
-        const isLive = 
-          response.status === rule.statusCode &&
-          response.headers['content-type']?.includes(rule.contentType) &&
-          response.data === rule.responseBody;
+          // Set a timeout for the response
+          const responseReceived = await new Promise<{success: boolean}>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error('Timeout waiting for response'));
+            }, 5000);
 
-        livenessStatusMap.set(rule.id, {
-          ruleId: rule.id,
-          isLive,
-          lastChecked: new Date().toISOString(),
-          failureReason: isLive ? undefined : 'Response mismatch'
-        });
+            testSocket.once('liveness_response', (data: {success: boolean}) => {
+              clearTimeout(timeout);
+              resolve(data);
+            });
+          });
+
+          const isLive = responseReceived && responseReceived.success;
+
+          livenessStatusMap.set(rule.id, {
+            ruleId: rule.id,
+            isLive,
+            lastChecked: new Date().toISOString(),
+            failureReason: isLive ? undefined : 'Socket.IO response mismatch'
+          });
+
+        } else {
+          // Fallback to HTTP if no sockets are connected
+          const response = await axios({
+            method: rule.method.toLowerCase(),
+            url: `http://localhost:${PORT}${rule.path}`,
+            headers: {
+              'Content-Type': rule.contentType
+            },
+            timeout: 5000
+          });
+
+          const isLive = 
+            response.status === rule.statusCode &&
+            response.headers['content-type']?.includes(rule.contentType) &&
+            response.data === rule.responseBody;
+
+          livenessStatusMap.set(rule.id, {
+            ruleId: rule.id,
+            isLive,
+            lastChecked: new Date().toISOString(),
+            failureReason: isLive ? undefined : 'Response mismatch'
+          });
+        }
 
       } catch (error: any) {
         livenessStatusMap.set(rule.id, {
@@ -169,6 +205,33 @@ io.on("connection", (socket) => {
     } catch (error) {
       console.error(`Error fetching rules for ${username}:`, error);
       socket.emit("error", "Failed to fetch rules");
+    }
+  });
+
+  // Handle liveness testing through Socket.IO
+  socket.on("test_liveness", async (data) => {
+    try {
+      const { path, method, expectedStatus, expectedContentType, expectedBody } = data;
+      
+      // Make internal HTTP request to test the endpoint
+      const response = await axios({
+        method: method.toLowerCase(),
+        url: `http://localhost:${PORT}${path}`,
+        headers: {
+          'Content-Type': expectedContentType
+        },
+        timeout: 5000
+      });
+
+      // Compare response against expected values
+      const isLive = 
+        response.status === expectedStatus &&
+        response.headers['content-type']?.includes(expectedContentType) &&
+        response.data === expectedBody;
+
+      socket.emit("liveness_response", { success: isLive });
+    } catch (error) {
+      socket.emit("liveness_response", { success: false });
     }
   });
 
