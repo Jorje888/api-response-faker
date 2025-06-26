@@ -487,3 +487,5 @@ httpServer.listen(PORT, () => {
   console.log(`Socket.IO listening for connections.`);
   
 });
+
+export { app };
