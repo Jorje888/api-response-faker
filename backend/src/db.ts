@@ -99,6 +99,26 @@ export function getAllRules(db: Database.Database): FakeApiRule[] {
 }
 
 /**
+ * Retrieves all fake API rules from the database with their IDs.
+ *
+ * @param {Database} db - The database to query.
+ * @returns {FakeApiRulePayload[]} An array of fake API rules with IDs.
+ */
+export function getAllRulesWithIds(db: Database.Database): FakeApiRulePayload[] {
+  try {
+    const statement = db.prepare(
+      "SELECT id, username, path, method, statusCode, contentType, responseBody FROM fake_api_rules"
+    );
+    return statement.all() as FakeApiRulePayload[];
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(`Database error: ${error.message}`);
+    }
+    throw new Error("An unknown error occurred while accessing the database");
+  }
+}
+
+/**
  * Inserts a new fake API rule into the database.
  *
  * @param {Database.Database} db - The database connection to use for the operation.

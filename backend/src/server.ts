@@ -4,6 +4,7 @@ import { Server as SocketIOServer } from "socket.io";
 import jsonwebtoken from "jsonwebtoken";
 import dotenv from "dotenv";
 import cors from "cors";
+import axios from "axios";
 import { FakeApiRule } from "./types/fakeApiRule";
 import * as DB from "./db";
 import { createRule, fakeARule } from "./util";
@@ -20,6 +21,99 @@ const fake_api_rules: Map<
 export const db = DB.initializeDB();
 DB.seedDatabase(db);
 const rules = DB.getAllRules(db);
+
+// In-memory liveness status map
+interface LivenessStatus {
+  ruleId: number;
+  isLive: boolean;
+  lastChecked: string;
+  failureReason?: string;
+}
+
+const livenessStatusMap = new Map<number, LivenessStatus>();
+
+// Background process to check liveness of all active rules every 10 seconds
+const checkLiveness = async () => {
+  try {
+    const allRules = DB.getAllRulesWithIds(db);
+    
+    for (const rule of allRules) {
+      try {
+        // Use Socket.IO to check liveness instead of HTTP requests
+        // Create a temporary socket connection for testing
+        const testSocket = io.sockets.sockets.values().next().value;
+        
+        if (testSocket) {
+          // Emit a test event and wait for response
+          testSocket.emit('test_liveness', {
+            path: rule.path,
+            method: rule.method,
+            expectedStatus: rule.statusCode,
+            expectedContentType: rule.contentType,
+            expectedBody: rule.responseBody
+          });
+
+          // Set a timeout for the response
+          const responseReceived = await new Promise<{success: boolean}>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error('Timeout waiting for response'));
+            }, 5000);
+
+            testSocket.once('liveness_response', (data: {success: boolean}) => {
+              clearTimeout(timeout);
+              resolve(data);
+            });
+          });
+
+          const isLive = responseReceived && responseReceived.success;
+
+          livenessStatusMap.set(rule.id, {
+            ruleId: rule.id,
+            isLive,
+            lastChecked: new Date().toISOString(),
+            failureReason: isLive ? undefined : 'Socket.IO response mismatch'
+          });
+
+        } else {
+          // Fallback to HTTP if no sockets are connected
+          const response = await axios({
+            method: rule.method.toLowerCase(),
+            url: `http://localhost:${PORT}${rule.path}`,
+            headers: {
+              'Content-Type': rule.contentType
+            },
+            timeout: 5000
+          });
+
+          const isLive = 
+            response.status === rule.statusCode &&
+            response.headers['content-type']?.includes(rule.contentType) &&
+            response.data === rule.responseBody;
+
+          livenessStatusMap.set(rule.id, {
+            ruleId: rule.id,
+            isLive,
+            lastChecked: new Date().toISOString(),
+            failureReason: isLive ? undefined : 'Response mismatch'
+          });
+        }
+
+      } catch (error: any) {
+        livenessStatusMap.set(rule.id, {
+          ruleId: rule.id,
+          isLive: false,
+          lastChecked: new Date().toISOString(),
+          failureReason: error.message || 'Request failed'
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error in liveness check:', error);
+  }
+};
+
+// Start the background process
+setInterval(checkLiveness, 10000); // Run every 10 seconds
 
 dotenv.config();
 const PORT = process.env.PORT || 3000;
@@ -114,6 +208,100 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Handle adding new rules via Socket.IO
+  socket.on("addRule", async (newRule: any) => {
+    try {
+      const { path, method, statusCode, contentType, responseBody } = newRule;
+      
+      // Validate required fields
+      if (!path || !method || !statusCode || !contentType || !responseBody) {
+        socket.emit("ruleAddError", { error: "Missing required fields" });
+        return;
+      }
+
+      const parsedStatusCode = parseInt(statusCode);
+      if (isNaN(parsedStatusCode) || parsedStatusCode < 100 || parsedStatusCode > 599) {
+        socket.emit("ruleAddError", { error: "Invalid status code" });
+        return;
+      }
+
+      // Check for duplicate rules
+      const allRules = DB.getAllRulesByUsername(db, username);
+      if (allRules.some(r => r.path === path && r.method === method)) {
+        socket.emit("ruleAddError", { error: "Rule already exists" });
+        return;
+      }
+
+      // Create the rule
+      const rule: FakeApiRule = {
+        user: username,
+        path,
+        method,
+        statusCode: parsedStatusCode,
+        contentType,
+        responseBody,
+      };
+
+      // Add to database and register route
+      DB.addRule(db, rule);
+      fakeARule(rule, app);
+
+      // Emit success response with the added rule
+      socket.emit("ruleAddedSuccess", { 
+        status: "ok", 
+        receivedRule: rule 
+      });
+
+    } catch (error: any) {
+      console.error(`Error adding rule for ${username}:`, error);
+      socket.emit("ruleAddError", { error: error.message || "Failed to add rule" });
+    }
+  });
+
+  // Handle getting user's rules via Socket.IO
+  socket.on("getMyRules", async (requestedUsername: string) => {
+    try {
+      // Verify the user is requesting their own rules
+      if (requestedUsername !== username) {
+        socket.emit("ruleAddError", { error: "Unauthorized access to rules" });
+        return;
+      }
+
+      const userRules = DB.getAllRulesByUsername(db, username);
+      socket.emit("yourRules", userRules);
+    } catch (error) {
+      console.error(`Error fetching rules for ${username}:`, error);
+      socket.emit("ruleAddError", { error: "Failed to fetch rules" });
+    }
+  });
+
+  // Handle liveness testing through Socket.IO
+  socket.on("test_liveness", async (data) => {
+    try {
+      const { path, method, expectedStatus, expectedContentType, expectedBody } = data;
+      
+      // Make internal HTTP request to test the endpoint
+      const response = await axios({
+        method: method.toLowerCase(),
+        url: `http://localhost:${PORT}${path}`,
+        headers: {
+          'Content-Type': expectedContentType
+        },
+        timeout: 5000
+      });
+
+      // Compare response against expected values
+      const isLive = 
+        response.status === expectedStatus &&
+        response.headers['content-type']?.includes(expectedContentType) &&
+        response.data === expectedBody;
+
+      socket.emit("liveness_response", { success: isLive });
+    } catch (error) {
+      socket.emit("liveness_response", { success: false });
+    }
+  });
+
   socket.on("disconnect", () => {
     console.log(
       `User disconnected from Socket.IO: ${username} (Socket ID: ${socket.id})`
@@ -137,6 +325,12 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   });
+});
+
+// Liveness status endpoint
+app.get('/liveness-status', (req, res) => {
+  // Return as a JSON array for compatibility
+  res.json([...livenessStatusMap.values()]);
 });
 
 // User Registration Route
