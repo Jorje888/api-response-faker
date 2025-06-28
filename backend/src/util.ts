@@ -2,8 +2,111 @@ import { FakeApiRule } from "./types/fakeApiRule";
 import { Request, Response } from "express";
 import Express from "express";
 import Database from "better-sqlite3";
-import { RuleMap, HttpMethod, ContentType } from "./types/fakeApiRule";
+import { RuleMap, HttpMethod, ContentType, ResponseType, RuleCondition, ConditionalResponse, ResponseTemplate } from "./types/fakeApiRule";
 import * as DB from "./db";
+
+/**
+ * Evaluates if a request matches the given conditions
+ */
+function evaluateConditions(req: Request, conditions: RuleCondition[]): boolean {
+  return conditions.every(condition => {
+    let value: string | undefined;
+    
+    switch (condition.type) {
+      case 'header':
+        value = req.headers[condition.key] as string;
+        break;
+      case 'query':
+        value = req.query[condition.key] as string;
+        break;
+      case 'body':
+        value = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+        break;
+      case 'path_param':
+        value = req.params[condition.key];
+        break;
+    }
+
+    if (!value && condition.operator !== 'not_exists') {
+      return false;
+    }
+
+    const compareValue = condition.caseSensitive ? value : value?.toLowerCase();
+    const compareTarget = condition.caseSensitive ? condition.value : condition.value?.toLowerCase();
+
+    switch (condition.operator) {
+      case 'equals':
+        return compareValue === compareTarget;
+      case 'contains':
+        return compareValue?.includes(compareTarget || '') || false;
+      case 'regex':
+        try {
+          const regex = new RegExp(condition.value || '', condition.caseSensitive ? '' : 'i');
+          return regex.test(value || '');
+        } catch {
+          return false;
+        }
+      case 'exists':
+        return value !== undefined && value !== null && value !== '';
+      case 'not_exists':
+        return value === undefined || value === null || value === '';
+      default:
+        return false;
+    }
+  });
+}
+
+/**
+ * Processes response template with variable substitution
+ */
+function processTemplate(template: ResponseTemplate, req: Request): string {
+  let responseBody = template.variables.reduce((body, variable) => {
+    let value = variable.value || '';
+    
+    if (variable.type === 'dynamic') {
+      // Extract from request
+      switch (variable.generator) {
+        case 'timestamp':
+          value = new Date().toISOString();
+          break;
+        case 'uuid':
+          value = crypto.randomUUID();
+          break;
+        case 'user_agent':
+          value = req.headers['user-agent'] || '';
+          break;
+        case 'ip':
+          value = req.ip || req.connection.remoteAddress || '';
+          break;
+        default:
+          value = variable.value || '';
+      }
+    } else if (variable.type === 'generated') {
+      // Use data generators
+      const generator = template.generators.find(g => g.name === variable.generator);
+      if (generator) {
+        switch (generator.type) {
+          case 'timestamp':
+            value = new Date().toISOString();
+            break;
+          case 'uuid':
+            value = crypto.randomUUID();
+            break;
+          case 'sequence':
+            // Simple sequence - in production you'd want a proper sequence generator
+            value = Date.now().toString();
+            break;
+          default:
+            value = variable.value || '';
+        }
+      }
+    }
+    
+    return body.replace(new RegExp(`\\{\\{${variable.name}\\}\\}`, 'g'), value);
+  }, template.variables[0]?.value || '');
+  
+  return responseBody;
+}
 
 /**
  * Dynamically registers an Express route for a single FakeApiRule.
@@ -19,12 +122,97 @@ import * as DB from "./db";
  *
  * @param rule The FakeApiRule to register a route for.
  * @param app The Express application to register the route with.
+ * @param db The database instance for logging requests.
  */
-export function fakeARule(rule: FakeApiRule, app: Express.Express) {
-  const responseHandler = (req: Request, res: Response) => {
-    res.status(rule.statusCode);
-    res.setHeader("Content-Type", rule.contentType);
-    res.send(formatMessage(rule.responseBody, rule.contentType));
+export function fakeARule(rule: FakeApiRule, app: Express.Express, db: Database.Database) {
+  const responseHandler = async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    let responseStatus = 200;
+    let errorMessage: string | undefined;
+    
+    try {
+      let finalResponse = rule;
+      
+      // Handle conditional responses
+      if (rule.responseType === ResponseType.CONDITIONAL && rule.responses) {
+        for (const conditionalResponse of rule.responses) {
+          if (evaluateConditions(req, conditionalResponse.conditions)) {
+            finalResponse = {
+              ...rule,
+              statusCode: conditionalResponse.statusCode,
+              contentType: conditionalResponse.contentType,
+              responseBody: conditionalResponse.responseBody,
+              headers: conditionalResponse.headers,
+              delay: conditionalResponse.delay
+            };
+            break;
+          }
+        }
+      }
+      
+      // Handle template responses
+      if (rule.responseType === ResponseType.TEMPLATE && rule.template) {
+        const processedBody = processTemplate(rule.template, req);
+        finalResponse = {
+          ...finalResponse,
+          responseBody: processedBody
+        };
+      }
+      
+      // Apply delay if specified
+      if (finalResponse.delay && finalResponse.delay > 0) {
+        await new Promise(resolve => setTimeout(resolve, finalResponse.delay));
+      }
+      
+      // Set status and headers
+      responseStatus = finalResponse.statusCode;
+      res.status(finalResponse.statusCode);
+      
+      // Set custom headers
+      if (finalResponse.headers) {
+        Object.entries(finalResponse.headers).forEach(([key, value]) => {
+          res.setHeader(key, value);
+        });
+      }
+      
+      // Set content type
+      res.setHeader("Content-Type", finalResponse.contentType);
+      
+      // Send response
+      res.send(formatMessage(finalResponse.responseBody, finalResponse.contentType));
+      
+    } catch (error) {
+      console.error('Error in fakeARule response handler:', error);
+      responseStatus = 500;
+      errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).send('Internal Server Error');
+    } finally {
+      // Log the request
+      const responseTime = Date.now() - startTime;
+      const ruleId = (rule as any).id; // We need to get the rule ID from the database
+      
+      if (ruleId) {
+        // Log request details
+        DB.logRequest(db, {
+          ruleId,
+          method: req.method as HttpMethod,
+          path: req.path,
+          query: req.query as Record<string, string>,
+          headers: req.headers as Record<string, string>,
+          body: typeof req.body === 'string' ? req.body : JSON.stringify(req.body),
+          responseStatus,
+          responseTime,
+          timestamp: new Date().toISOString(),
+          userAgent: req.headers['user-agent'],
+          ip: req.ip || req.connection.remoteAddress,
+          userId: (req as any).user?.username, // From JWT auth
+          error: errorMessage
+        });
+        
+        // Update usage statistics
+        DB.updateRuleUsage(db, ruleId);
+      }
+    }
   };
 
   /**
@@ -60,6 +248,7 @@ export function fakeARule(rule: FakeApiRule, app: Express.Express) {
         );
     }
   };
+  
   const method = rule.method.toLowerCase();
   switch (method) {
     case "get":
@@ -144,7 +333,7 @@ export function createRule(
 
   DB.addRule(db, rule);
   mapping.set({ user: rule.user, path: rule.path, method: rule.method }, rule);
-  fakeARule(rule, app);
+  fakeARule(rule, app, db);
 }
 
 /**

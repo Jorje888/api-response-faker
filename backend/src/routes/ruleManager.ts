@@ -1,7 +1,7 @@
 import express from 'express';
 import jsonwebtoken from 'jsonwebtoken';
 import * as DB from '../db';
-import { FakeApiRule } from '../types/fakeApiRule';
+import { FakeApiRule, ResponseType, RuleStatus } from '../types/fakeApiRule';
 import { fakeARule, removeRoute } from './routeManager';
 
 const router = express.Router();
@@ -53,6 +53,8 @@ export function initializeRouter(database: any, application: any) {
         statusCode: parsedStatusCode,
         contentType,
         responseBody,
+        status: RuleStatus.ACTIVE,
+        responseType: ResponseType.STATIC
       };
 
       DB.addRule(db, rule);
@@ -124,7 +126,9 @@ export function initializeRouter(database: any, application: any) {
         method,
         statusCode: parsedStatusCode,
         contentType,
-        responseBody
+        responseBody,
+        status: RuleStatus.ACTIVE,
+        responseType: ResponseType.STATIC
       };
       fakeARule(updatedRule, app);
       res.json({ message: 'Rule updated successfully', rule: updatedRule });
