@@ -5,8 +5,27 @@ import jsonwebtoken from "jsonwebtoken";
 import dotenv from "dotenv";
 import cors from "cors";
 import axios from "axios";
-import { FakeApiRule } from "./types/fakeApiRule";
+import { 
+  FakeApiRule, 
+  ResponseType, 
+  RuleStatus, 
+  AnalyticsFilter, 
+  HttpMethod,
+  ContentType,
+  RuleSearchParams,
+  RuleBulkOperation
+} from "./types/fakeApiRule";
 import * as DB from "./db";
+import { 
+  getRuleGroups,
+  createRuleGroup,
+  updateRuleGroup,
+  deleteRuleGroup,
+  getRuleHistory,
+  searchRules,
+  bulkUpdateRules,
+  updateRule
+} from "./db";
 import { createRule, fakeARule } from "./util";
 import bcrypt from "bcrypt";
 import { format } from "path";
@@ -136,7 +155,7 @@ rules.forEach((rule) => {
 
 // Apply fake API rules to the Express app
 rules.forEach((rule) => {
-  fakeARule(rule, app);
+  fakeARule(rule, app, db);
 });
 
 // Initialize rule management routes
@@ -240,11 +259,13 @@ io.on("connection", (socket) => {
         statusCode: parsedStatusCode,
         contentType,
         responseBody,
+        status: RuleStatus.ACTIVE,
+        responseType: ResponseType.STATIC,
       };
 
       // Add to database and register route
       DB.addRule(db, rule);
-      fakeARule(rule, app);
+      fakeARule(rule, app, db);
 
       // Emit success response with the added rule
       socket.emit("ruleAddedSuccess", { 
@@ -331,6 +352,52 @@ app.get('/health', (req, res) => {
 app.get('/liveness-status', (req, res) => {
   // Return as a JSON array for compatibility
   res.json([...livenessStatusMap.values()]);
+});
+
+// Analytics endpoints
+app.get('/api/analytics/summary', (req, res) => {
+  try {
+    const days = parseInt(req.query.days as string) || 30;
+    const summary = DB.getAnalyticsSummary(db, days);
+    res.json(summary);
+  } catch (error) {
+    console.error('Error getting analytics summary:', error);
+    res.status(500).json({ error: 'Failed to get analytics summary' });
+  }
+});
+
+app.get('/api/analytics/rule/:id', (req, res) => {
+  try {
+    const ruleId = parseInt(req.params.id);
+    const days = parseInt(req.query.days as string) || 30;
+    const analytics = DB.getRuleAnalytics(db, ruleId, days);
+    res.json(analytics);
+  } catch (error) {
+    console.error('Error getting rule analytics:', error);
+    res.status(500).json({ error: 'Failed to get rule analytics' });
+  }
+});
+
+app.get('/api/analytics/logs', (req, res) => {
+  try {
+    const filter: AnalyticsFilter = {
+      ruleId: req.query.ruleId ? parseInt(req.query.ruleId as string) : undefined,
+      userId: req.query.userId as string,
+      startDate: req.query.startDate as string,
+      endDate: req.query.endDate as string,
+      method: req.query.method as HttpMethod,
+      statusCode: req.query.statusCode ? parseInt(req.query.statusCode as string) : undefined,
+      minResponseTime: req.query.minResponseTime ? parseInt(req.query.minResponseTime as string) : undefined,
+      maxResponseTime: req.query.maxResponseTime ? parseInt(req.query.maxResponseTime as string) : undefined,
+    };
+    
+    const limit = parseInt(req.query.limit as string) || 100;
+    const logs = DB.getRequestLogs(db, filter, limit);
+    res.json(logs);
+  } catch (error) {
+    console.error('Error getting request logs:', error);
+    res.status(500).json({ error: 'Failed to get request logs' });
+  }
 });
 
 // User Registration Route
@@ -442,6 +509,171 @@ app.get("/validate-token", (req, res) => {
     }
     res.json({ valid: true, user });
   });
+});
+
+// Enhanced rule management endpoints
+app.get('/api/rule-groups', (req, res) => {
+  try {
+    const userId = req.query.userId as string;
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+    
+    const groups = getRuleGroups(db, userId);
+    res.json(groups);
+  } catch (error) {
+    console.error('Error fetching rule groups:', error);
+    res.status(500).json({ error: 'Failed to fetch rule groups' });
+  }
+});
+
+app.post('/api/rule-groups', (req, res) => {
+  try {
+    const { name, description, userId, color, isDefault } = req.body;
+    
+    if (!name || !userId) {
+      return res.status(400).json({ error: 'name and userId are required' });
+    }
+    
+    const group = createRuleGroup(db, {
+      name,
+      description,
+      userId,
+      color,
+      isDefault: isDefault || false
+    });
+    
+    res.status(201).json(group);
+  } catch (error) {
+    console.error('Error creating rule group:', error);
+    res.status(500).json({ error: 'Failed to create rule group' });
+  }
+});
+
+app.put('/api/rule-groups/:id', (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const updates = req.body;
+    
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid group ID' });
+    }
+    
+    const success = updateRuleGroup(db, id, updates);
+    if (success) {
+      res.json({ message: 'Rule group updated successfully' });
+    } else {
+      res.status(404).json({ error: 'Rule group not found' });
+    }
+  } catch (error) {
+    console.error('Error updating rule group:', error);
+    res.status(500).json({ error: 'Failed to update rule group' });
+  }
+});
+
+app.delete('/api/rule-groups/:id', (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const userId = req.query.userId as string;
+    
+    if (isNaN(id) || !userId) {
+      return res.status(400).json({ error: 'Invalid group ID or userId' });
+    }
+    
+    const success = deleteRuleGroup(db, id, userId);
+    if (success) {
+      res.json({ message: 'Rule group deleted successfully' });
+    } else {
+      res.status(404).json({ error: 'Rule group not found or cannot be deleted' });
+    }
+  } catch (error) {
+    console.error('Error deleting rule group:', error);
+    res.status(500).json({ error: 'Failed to delete rule group' });
+  }
+});
+
+app.get('/api/rules/:id/history', (req, res) => {
+  try {
+    const ruleId = parseInt(req.params.id);
+    
+    if (isNaN(ruleId)) {
+      return res.status(400).json({ error: 'Invalid rule ID' });
+    }
+    
+    const history = getRuleHistory(db, ruleId);
+    res.json(history);
+  } catch (error) {
+    console.error('Error fetching rule history:', error);
+    res.status(500).json({ error: 'Failed to fetch rule history' });
+  }
+});
+
+app.get('/api/rules/search', (req, res) => {
+  try {
+    const params: RuleSearchParams = {
+      search: req.query.search as string,
+      status: req.query.status ? (Array.isArray(req.query.status) ? req.query.status as RuleStatus[] : [req.query.status as RuleStatus]) : undefined,
+      methods: req.query.methods ? (Array.isArray(req.query.methods) ? req.query.methods as HttpMethod[] : [req.query.methods as HttpMethod]) : undefined,
+      contentTypes: req.query.contentTypes ? (Array.isArray(req.query.contentTypes) ? req.query.contentTypes as ContentType[] : [req.query.contentTypes as ContentType]) : undefined,
+      tags: req.query.tags ? (Array.isArray(req.query.tags) ? req.query.tags as string[] : [req.query.tags as string]) : undefined,
+      groupId: req.query.groupId ? parseInt(req.query.groupId as string) : undefined,
+      userId: req.query.userId as string,
+      createdAfter: req.query.createdAfter as string,
+      createdBefore: req.query.createdBefore as string,
+      lastUsedAfter: req.query.lastUsedAfter as string,
+      sortBy: req.query.sortBy as any,
+      sortOrder: req.query.sortOrder as 'asc' | 'desc',
+      page: req.query.page ? parseInt(req.query.page as string) : undefined,
+      limit: req.query.limit ? parseInt(req.query.limit as string) : undefined
+    };
+    
+    const result = searchRules(db, params);
+    res.json(result);
+  } catch (error) {
+    console.error('Error searching rules:', error);
+    res.status(500).json({ error: 'Failed to search rules' });
+  }
+});
+
+app.post('/api/rules/bulk', (req, res) => {
+  try {
+    const operation: RuleBulkOperation = req.body;
+    
+    if (!operation.ruleIds || operation.ruleIds.length === 0 || !operation.operation || !operation.userId) {
+      return res.status(400).json({ error: 'ruleIds, operation, and userId are required' });
+    }
+    
+    const success = bulkUpdateRules(db, operation);
+    if (success) {
+      res.json({ message: 'Bulk operation completed successfully' });
+    } else {
+      res.status(400).json({ error: 'Bulk operation failed' });
+    }
+  } catch (error) {
+    console.error('Error performing bulk operation:', error);
+    res.status(500).json({ error: 'Failed to perform bulk operation' });
+  }
+});
+
+app.put('/api/rules/:id', (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { updates, userId, comment } = req.body;
+    
+    if (isNaN(id) || !userId || !updates) {
+      return res.status(400).json({ error: 'Invalid rule ID, userId, or updates' });
+    }
+    
+    const success = updateRule(db, id, updates, userId, comment);
+    if (success) {
+      res.json({ message: 'Rule updated successfully' });
+    } else {
+      res.status(404).json({ error: 'Rule not found or update failed' });
+    }
+  } catch (error) {
+    console.error('Error updating rule:', error);
+    res.status(500).json({ error: 'Failed to update rule' });
+  }
 });
 
 // Error handling middleware
