@@ -179,3 +179,70 @@ export interface AnalyticsSummary {
   busiestHour: number;
   requestsPerHour: Array<{ hour: number; count: number }>;
 }
+
+// Enhanced rule management interfaces
+export interface RuleGroup {
+  id: number;
+  name: string;
+  description?: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+  color?: string;
+  isDefault: boolean;
+}
+
+export interface RuleHistoryEntry {
+  id: number;
+  ruleId: number;
+  version: number;
+  changedAt: string;
+  changedBy: string;
+  changes: Partial<FakeApiRule>;
+  comment?: string;
+  action: 'created' | 'updated' | 'deleted' | 'status_changed';
+}
+
+export interface RuleSearchParams {
+  search?: string;
+  status?: RuleStatus[];
+  methods?: HttpMethod[];
+  contentTypes?: ContentType[];
+  tags?: string[];
+  groupId?: number;
+  userId?: string;
+  createdAfter?: string;
+  createdBefore?: string;
+  lastUsedAfter?: string;
+  sortBy?: 'name' | 'createdAt' | 'lastUsed' | 'usageCount' | 'status';
+  sortOrder?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
+}
+
+export interface RuleSearchResult {
+  rules: FakeApiRulePayload[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface RuleBulkOperation {
+  ruleIds: number[];
+  operation: 'activate' | 'deactivate' | 'archive' | 'delete' | 'move_to_group';
+  groupId?: number;
+  userId: string;
+}
+
+export interface RuleImportExport {
+  version: string;
+  exportedAt: string;
+  rules: FakeApiRulePayload[];
+  groups: RuleGroup[];
+  metadata: {
+    totalRules: number;
+    totalGroups: number;
+    exportedBy: string;
+  };
+}
