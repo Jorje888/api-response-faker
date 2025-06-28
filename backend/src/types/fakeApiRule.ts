@@ -121,3 +121,61 @@ export interface DataGenerator {
   type: 'faker' | 'custom' | 'sequence' | 'timestamp' | 'uuid';
   config?: Record<string, any>;
 }
+
+// Log analytics interfaces
+export interface RequestLog {
+  id: number;
+  ruleId: number;
+  method: HttpMethod;
+  path: string;
+  query?: Record<string, string>;
+  headers: Record<string, string>;
+  body?: string;
+  responseStatus: number;
+  responseTime: number;
+  timestamp: string;
+  userAgent?: string;
+  ip?: string;
+  userId?: string;
+  error?: string;
+}
+
+export interface RuleAnalytics {
+  ruleId: number;
+  totalRequests: number;
+  uniqueIps: number;
+  averageResponseTime: number;
+  statusCodeDistribution: Record<number, number>;
+  requestsPerDay: Array<{ date: string; count: number }>;
+  lastAccessed: string;
+  errorRate: number;
+  peakHour: number;
+  averageRequestsPerHour: number;
+}
+
+export interface AnalyticsFilter {
+  ruleId?: number;
+  userId?: string;
+  startDate?: string;
+  endDate?: string;
+  method?: HttpMethod;
+  statusCode?: number;
+  minResponseTime?: number;
+  maxResponseTime?: number;
+}
+
+export interface AnalyticsSummary {
+  totalRequests: number;
+  uniqueUsers: number;
+  uniqueRules: number;
+  averageResponseTime: number;
+  totalErrors: number;
+  errorRate: number;
+  mostActiveRule: {
+    ruleId: number;
+    path: string;
+    requestCount: number;
+  };
+  busiestHour: number;
+  requestsPerHour: Array<{ hour: number; count: number }>;
+}
